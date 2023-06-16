@@ -5,10 +5,11 @@ json_url="https://product-details.mozilla.org/1.0/firefox_versions.json"
 
 # Get the installed version of firefox
 installed_version=$(firefox --version | awk '{print $3}')
+installed_version="1.3"
 
 # Download the JSON file and calculate the total size
 json_file="/tmp/firefox_versions.json"
-curl -s "$json_url" -o "$json_file"
+curl -L --parallel "$json_url" -o "$json_file"
 json_file_size=$(stat -c %s "$json_file")
 
 # Get the latest version from the downloaded JSON file
@@ -27,7 +28,7 @@ else
   if [[ $choice == "y" || $choice == "Y" ]]; then
     # Download firefox
     cd "$HOME/Downloads/"
-    sudo curl --parallel -L -o "firefox-latest.tar.bz2" "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
+    sudo curl -L --parallel "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" -o "firefox-latest.tar.bz2"
     sudo tar -xvjf "firefox-latest.tar.bz2"
 
     # Remove firefox directory and replace with the fresh one
@@ -41,7 +42,9 @@ else
     if [ -f "/usr/local/share/applications/firefox.desktop" ]; then
        sudo rm -v "/usr/local/share/applications/firefox.desktop" 
     fi
-    sudo wget "https://raw.githubusercontent.com/mozilla/sumo-kb/main/install-firefox-linux/firefox.desktop" -P "/usr/local/share/applications"
+    desktop_file_link="https://raw.githubusercontent.com/mozilla/sumo-kb/main/install-firefox-linux/firefox.desktop"
+    sudo curl -L --parallel "$desktop_file_link" -o "/usr/local/share/applications/firefox.desktop"
+
 
     # Change "Firefox Web Browser" to "Firefox" for esthetic reasons
     sudo sed -i "s/Name=Firefox Web Browser/Name=Firefox/g" "/usr/local/share/applications/firefox.desktop"
