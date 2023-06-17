@@ -5,7 +5,6 @@ json_url="https://product-details.mozilla.org/1.0/firefox_versions.json"
 
 # Get the installed version of firefox
 installed_version=$(firefox --version | awk '{print $3}')
-installed_version="1.3"
 
 # Download the JSON file and calculate the total size
 json_file="/tmp/firefox_versions.json"
