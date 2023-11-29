@@ -8,7 +8,7 @@ installed_version=$(firefox --version | awk '{print $3}')
 
 # Download the JSON file and calculate the total size
 json_file="/tmp/firefox_versions.json"
-curl -L --parallel "$json_url" -o "$json_file"
+sudo curl -L --parallel "$json_url" -o "$json_file"
 json_file_size=$(stat -c %s "$json_file")
 
 # Get the latest version from the downloaded JSON file
@@ -27,8 +27,8 @@ else
   if [[ $choice == "y" || $choice == "Y" ]]; then
     # Download firefox
     cd "$HOME/Downloads/"
-    sudo curl -L --parallel "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" -o "firefox-latest.tar.bz2"
-    sudo tar -xvjf "firefox-latest.tar.bz2"
+    curl -L --parallel "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" -o "firefox-latest.tar.bz2"
+    tar -xvjf "firefox-latest.tar.bz2"
 
     # Remove firefox directory and replace with the fresh one
     sudo rm -rvf "/opt/firefox"
