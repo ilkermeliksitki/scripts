@@ -8,7 +8,7 @@ rg --color=always --line-number --no-heading --smart-case "${*:-}" |
       --delimiter : \
       --preview 'batcat --color=always {1} --highlight-line {2}' \
       --preview-window 'up,60%,border-bottom,+{2}+3/3,~3' \
-      --bind 'ctrl-j:execute(cd $(dirname {1}) && vim +{2} $(basename {1}) && echo "vim {1} +{2}" | tee -a ~/.bash_history)' \
+      --bind 'ctrl-m:execute(cd $(dirname {1}) && vim +{2} $(basename {1}) && echo "vim {1} +{2}" | tee -a ~/.bash_history)' \
 
 
 
