@@ -19,6 +19,7 @@ function minutes_to_seconds {
 
 # Function to play sound notification
 function notify_sound {
+    # play the sound at the background
     paplay $1 &
 }
 
