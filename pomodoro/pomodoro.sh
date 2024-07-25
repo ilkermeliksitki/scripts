@@ -26,6 +26,7 @@ function notify_sound {
 # Function to display countdown timer
 function countdown {
     local seconds=$1
+
     while [ $seconds -gt 0 ]; do
         echo -ne "$(date -u --date @$seconds +%H:%M:%S)\r"
         sleep 1
@@ -42,7 +43,6 @@ function handle_sigint {
 
 # Register SIGINT handler
 trap handle_sigint SIGINT
-
 
 # Parse command-line arguments
 TOTAL_FOCUS_PERIODS=0
@@ -96,8 +96,6 @@ function calculate_finish_time {
 function pomodoro {
     local pomodoros_completed=0
     local total_focus_periods=0
-    local total_short_breaks=0
-    local total_long_breaks=0
 
     calculate_finish_time $FOCUS_TIME $SHORT_BREAK $LONG_BREAK $TOTAL_FOCUS_PERIODS $POMODOROS_BEFORE_LONG_BREAK
 
@@ -118,16 +116,13 @@ function pomodoro {
         ((pomodoros_completed++))
 
         # Check if it's time for a long break
-        if [ $pomodoros_completed -eq $POMODOROS_BEFORE_LONG_BREAK ]; then
-            ((total_long_breaks++))
-            echo "Long Break $total_long_breaks ($LONG_BREAK minutes)"
+        if [ $(($pomodoros_completed % $POMODOROS_BEFORE_LONG_BREAK)) = 0 ]; then
+            echo "Long Break ($LONG_BREAK minutes)"
             countdown $(minutes_to_seconds $LONG_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
-           # pomodoros_completed=0
         else
-            ((total_short_breaks++))
-            echo "Short Break $total_short_breaks ($SHORT_BREAK minutes)"
+            echo "Short Break ($SHORT_BREAK minutes)"
             countdown $(minutes_to_seconds $SHORT_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
@@ -137,4 +132,3 @@ function pomodoro {
 
 # Start the Pomodoro timer
 pomodoro
-
