@@ -15,7 +15,7 @@ if [ "$BATTERY_LEVEL" -le "$CRITICAL_LEVEL" ]; then
     DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
         notify-send -u critical "Battery low!" "Battery level is ${BATTERY_LEVEL}%. Please plug in your charger."
 
-    # Play a warning sound (replace with your preferred sound file) four times
+    # Play a warning sound (2 times: suiable with suspend-error.oga sound)
     for i in {1..2}; do
         paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga
     done
