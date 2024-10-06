@@ -18,7 +18,7 @@ if [ "$BATTERY_LEVEL" -le "$CRITICAL_LEVEL" ] && [ "$(cat "$AC_STATUS_FILE")" -e
         notify-send -u critical "Battery low!" "Battery level is ${BATTERY_LEVEL}%. Please plug in your charger."
 
     # Play a warning sound (2 times: suiable with suspend-error.oga sound)
-    for i in {1..2}; do
+    for _ in {1..2}; do
         paplay /usr/share/sounds/freedesktop/stereo/suspend-error.oga
     done
 fi
