@@ -5,7 +5,6 @@ BATTERY_LEVEL=$(acpi -b | grep -P -o '[0-9]+(?=%)')
 
 # Define the battery percentage threshold
 CRITICAL_LEVEL=15
-echo "Battery level is ${BATTERY_LEVEL}%"
 
 # Export environment variables for PulseAudio
 export XDG_RUNTIME_DIR=/run/user/1000
