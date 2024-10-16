@@ -2,6 +2,7 @@
 
 import re
 import sys
+import time
 import logging
 import requests
 import subprocess
@@ -110,7 +111,7 @@ def main():
                 loc_href = extract_location(appointment)
                 note_text = extract_note_text(appointment)
                 add_event_to_calendar(course_title, loc_href, start_date, duration_min, note_text)
-                exit()
+                time.sleep(1)
     
     logging.info("All appointments have been added to the calendar.")
 
