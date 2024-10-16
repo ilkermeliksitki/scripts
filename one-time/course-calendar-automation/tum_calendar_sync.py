@@ -45,6 +45,7 @@ def extract_location(appointment):
     if loc and loc.find('a') and loc.find('a').get('href') is not None:
         raum_key = re.search(r'raumKey=(\d+)', loc.find('a').get('href'))
         if raum_key:
+            # use escape character for $ctx to avoid shell expansion
             return f"https://campus.tum.de/tumonline/ee/ui/ca2/app/desktop/#/pl/ui/\\$ctx/ris.einzelRaum?raumKey={raum_key.group(1)}"
     return "Location not specified"
 
