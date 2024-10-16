@@ -19,7 +19,7 @@ for html_file in sys.argv[1:]:
 
     soup = BeautifulSoup(html, 'html.parser')
     appointments = soup.find_all('div', class_='appointment-compact slide-box')
-    course_title = html_file.split('.')[0].replace('-', ' ').title()
+    course_title = html_file.split('/')[-1].split('.')[0].replace('-', ' ').title()
     for appointment in appointments:
         # date
         apt_time = appointment.find('div', class_='apt-time').text # date  MON, 04.11.2024, 11:30 - 14:00  at  Room 002, Seminarraum (2903.EG.002)
