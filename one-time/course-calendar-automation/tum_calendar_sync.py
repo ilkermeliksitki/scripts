@@ -1,30 +1,47 @@
 #!/usr/bin/env python3
 
-import sys
 import re
+import sys
+import logging
 import requests
 import subprocess
 from bs4 import BeautifulSoup
 from datetime import datetime
 
+# configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("tum_calendar_sync.log"),
+        logging.StreamHandler()
+    ]
+)
+
 def validate_args():
     if len(sys.argv) < 2:
-        print("Usage: python3 tum_calendar_sync.py <html_file1> <html_file2> ...")
+        logging.error("Usage: python3 tum_calendar_sync.py <html_file1> <html_file2> ...")
         sys.exit(1)
+    logging.info("Arguments are validated successfully.")
 
 
 def read_html_file(html_file):
     with open(html_file, 'r') as file:
+        logging.info(f"Reading file: {html_file}")
         return file.read()
 
 
 def parse_appointments(html):
     soup = BeautifulSoup(html, 'html.parser')
-    return soup.find_all('div', class_='appointment-compact slide-box')
+    appointments = soup.find_all('div', class_='appointment-compact slide-box')
+    logging.info(f"Parsed {len(appointments)} appointments.")
+    return appointments
 
 
 def extract_course_title(html_file):
-    return html_file.split('/')[-1].split('.')[0].replace('-', ' ').title()
+    course_title = html_file.split('/')[-1].split('.')[0].replace('-', ' ').title()
+    logging.info(f"Extracted course title: {course_title}")
+    return course_title
 
 
 def extract_date_time(apt_time):
@@ -36,7 +53,9 @@ def extract_date_time(apt_time):
         start_date = datetime.strptime(f"{date} {start_time}", '%d.%m.%Y %H:%M')
         end_date = datetime.strptime(f"{date} {end_time}", '%d.%m.%Y %H:%M')
         duration_min = (end_date - start_date).seconds / 60
+        logging.info(f"Extracted date and time: {start_date} for {duration_min} minutes.")
         return start_date, duration_min
+    logging.warning("Failed to extract date and time.")
     return None, None
 
 
@@ -46,13 +65,18 @@ def extract_location(appointment):
         raum_key = re.search(r'raumKey=(\d+)', loc.find('a').get('href'))
         if raum_key:
             # use escape character for $ctx to avoid shell expansion
-            return f"https://campus.tum.de/tumonline/ee/ui/ca2/app/desktop/#/pl/ui/\\$ctx/ris.einzelRaum?raumKey={raum_key.group(1)}"
+            loc_href = f"https://campus.tum.de/tumonline/ee/ui/ca2/app/desktop/#/pl/ui/\\$ctx/ris.einzelRaum?raumKey={raum_key.group(1)}"
+            logging.info(f"Extracted location raum key: {raum_key.group(1)}")
+            return loc_href
+    logging.warning("Location not specified.")
     return "Location not specified"
 
 
 def extract_note_text(appointment):
     note = appointment.find('div', class_='appointment-comment ng-star-inserted')
-    return note.text.strip() if note else ""
+    note_text =  note.text.strip() if note else ""
+    logging.info(f"Extracted note text: {note_text}")
+    return note_text
 
 
 def add_event_to_calendar(course_title, loc_href, start_date, duration_min, note_text):
@@ -64,8 +88,9 @@ def add_event_to_calendar(course_title, loc_href, start_date, duration_min, note
         '--duration', str(int(duration_min)),
         '--description', note_text
     ]
+    logging.info(f"Adding event to calendar with command: {' '.join(command)}")
     subprocess.run(command)
-    print(f"Added appointment on {start_date} to calendar.")
+    logging.info(f"Added appointment on {start_date} to calendar.")
 
 
 def main():
@@ -85,7 +110,7 @@ def main():
                 add_event_to_calendar(course_title, loc_href, start_date, duration_min, note_text)
                 exit()
     
-    print("All appointments have been added to the calendar.")
+    logging.info("All appointments have been added to the calendar.")
 
 if __name__ == "__main__":
     main()
