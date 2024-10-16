@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import re
 import requests
+import subprocess
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -56,14 +56,15 @@ def extract_note_text(appointment):
 
 
 def add_event_to_calendar(course_title, loc_href, start_date, duration_min, note_text):
-    command = (
-        f'gcalcli add --title "{course_title}" \\\n'
-        f'        --where "{loc_href}" \\\n'
-        f'        --when "{start_date}" \\\n'
-        f'        --duration "{int(duration_min)}" \\\n'
-        f'        --description "{note_text}"'
-    )
-    os.system(command)
+    command = [
+        'gcalcli', 'add',
+        '--title', course_title,
+        '--where', loc_href,
+        '--when', str(start_date),
+        '--duration', str(int(duration_min)),
+        '--description', note_text
+    ]
+    subprocess.run(command)
     print(f"Added appointment on {start_date} to calendar.")
 
 
