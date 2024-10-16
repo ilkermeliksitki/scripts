@@ -1,3 +1,4 @@
 aws-archive/icloud/venv/*
 *.mp4
 *.swp
+*.log
