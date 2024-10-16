@@ -86,7 +86,9 @@ def add_event_to_calendar(course_title, loc_href, start_date, duration_min, note
         '--where', loc_href,
         '--when', str(start_date),
         '--duration', str(int(duration_min)),
-        '--description', note_text
+        '--description', note_text,
+        '--reminder', '1h',
+        '--reminder', '10m'
     ]
     logging.info(f"Adding event to calendar with command: {' '.join(command)}")
     subprocess.run(command)
