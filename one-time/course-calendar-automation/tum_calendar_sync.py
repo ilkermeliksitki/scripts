@@ -89,6 +89,7 @@ def add_event_to_calendar(course_title, loc_href, start_date, duration_min, note
         '--duration', str(int(duration_min)),
         '--description', note_text,
         '--reminder', '1h',
+        '--calendar', 'ilkermeliksitki@gmail.com',
         '--reminder', '10m'
     ]
     logging.info(f"Adding event to calendar with command: {' '.join(command)}")
