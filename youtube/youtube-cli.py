@@ -61,21 +61,22 @@ for i in ls:
             print(video_renderer['ownerText']['runs'][0]['text'])
             print('-' * 100)
             try:
-                inp = input('Enter for the next one, l for listening: ')
+                inp = input('Enter for the next one, w for watch: ')
             except KeyboardInterrupt:
                 print()
                 sys.exit(1)
             except EOFError:
                 print()
                 sys.exit(2)
-            if inp == 'l':
-                opt_name = input('Enter the output name of the music: ')
+            if inp == 'w':
+                opt_name = input('Enter the output name of the youtube video: ')
                 if opt_name == "":
-                    subprocess.run(f'yt-dlp -f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 {video_id}', shell=True)
+                    subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id}', shell=True)
+                    subprocess.run(f'mpv {video_id}', shell=True)
                 else:
-                    subprocess.run(f'yt-dlp -f 247+249 {video_id} -o {opt_name}.webm && mpv "{opt_name}.webm"', shell=True)
-                sys.exit(0)
+                    subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id} -o {opt_name}', shell=True)
+                    subprocess.run(f'mpv {opt_name}*', shell=True)
+            sys.exit(0)
         except KeyError:
             pass
     break
-
