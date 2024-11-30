@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CSV file name
-CSV_FILE="words.csv"
+CSV_FILE="/home/melik/Documents/projects/scripts/anki_csv/words.csv"
 
 # add a word and definition to the CSV file
 add_word_to_csv() {
