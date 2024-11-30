@@ -14,9 +14,8 @@ add_word_to_csv() {
         echo "english_word,definition" > "$CSV_FILE"
     fi
 
-    # append the word and definition to the CSV file
-    echo "$word,$definition" >> "$CSV_FILE"
-    echo "Added: $word, $definition"
+    # append the word and definition to the CSV file by considering escaping the commas surrounded by double quotes
+    echo "\"$word\",\"$definition\"" >> "$CSV_FILE"
 }
 
 # prompting for the word and definition
