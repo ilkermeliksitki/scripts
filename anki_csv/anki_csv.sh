@@ -7,7 +7,6 @@ CSV_FILE="/home/melik/Documents/projects/scripts/anki_csv/words.csv"
 add_word_to_csv() {
     local word=$1
     local definition=$2
-
     # check if the file exists
     if [[ ! -f "$CSV_FILE" ]]; then
         # create the file and add the header
@@ -25,3 +24,4 @@ read -p "Enter the definition: " definition
 # call the function
 add_word_to_csv "$word" "$definition"
 
+echo "The word and definition have been added to the CSV file."
