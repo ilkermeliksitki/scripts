@@ -1,27 +1,28 @@
 #!/bin/bash
 
 # CSV file name
-CSV_FILE="/home/melik/Documents/projects/scripts/anki_csv/words.csv"
+CSV_FILE="/home/melik/Documents/projects/scripts/anki_csv/anki_items.csv"
 
-# add a word and definition to the CSV file
-add_word_to_csv() {
-    local word=$1
-    local definition=$2
+# create a function to add the anki item
+add_anki_item() {
+    local front=$1
+    local back=$2
+    local topic=$3
     # check if the file exists
     if [[ ! -f "$CSV_FILE" ]]; then
         # create the file and add the header
-        echo "english_word,definition" > "$CSV_FILE"
+        echo "front,back,topic" > "$CSV_FILE"
     fi
 
-    # append the word and definition to the CSV file by considering escaping the commas surrounded by double quotes
-    echo "\"$word\",\"$definition\"" >> "$CSV_FILE"
+    echo "\"$front\",\"$back\",\"$topic\"" >> "$CSV_FILE"
 }
 
 # prompting for the word and definition
-read -p "Enter the English word: " word
-read -p "Enter the definition: " definition
+read -p "Enter front: " front
+read -p "Enter back: " back
+read -p "Enter topic: " topic
 
 # call the function
-add_word_to_csv "$word" "$definition"
+add_anki_item "$front" "$back" "$topic"
 
-echo "The word and definition have been added to the CSV file."
+echo "Front: $front, Back: $back, Topic: $topic are added to the CSV file."
