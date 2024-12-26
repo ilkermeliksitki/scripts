@@ -72,10 +72,10 @@ for i in ls:
                 opt_name = input('Enter the output name of the youtube video: ')
                 if opt_name == "":
                     subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id}', shell=True)
-                    subprocess.run(f'mpv {video_id}', shell=True)
+                    subprocess.run(f'mpv *{video_id}*', shell=True)
                 else:
                     subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id} -o {opt_name}', shell=True)
-                    subprocess.run(f'mpv {opt_name}*', shell=True)
+                    subprocess.run(f'mpv *{opt_name}*', shell=True)
             sys.exit(0)
         except KeyError:
             pass

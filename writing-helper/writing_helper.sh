@@ -7,9 +7,12 @@ notify_user() {
 }
 
 case "$1" in
-    "mathjax")
-        # without a newline character
-        echo -n '<anki-mathjax block="true">...</anki-mathjax>' | xclip -selection clipboard
+    "mathjax_block")
+        echo -n '<anki-mathjax block="true"></anki-mathjax>' | xclip -selection clipboard
+        notify_user "anki-mathjax snippet copied to clipboard"
+        ;;
+    "mathjax_inline")
+        echo -n '<anki-mathjax></anki-mathjax>' | xclip -selection clipboard
         notify_user "anki-mathjax snippet copied to clipboard"
         ;;
     "frac")
@@ -17,7 +20,7 @@ case "$1" in
         notify_user "Fraction snippet copied to clipboard"
         ;;
     *)
-        echo "Usage: $0 {mathjax|example2}"
+        notify_user "Invalid argument, no action taken"
         ;;
 esac
 
