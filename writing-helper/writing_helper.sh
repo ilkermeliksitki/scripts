@@ -19,6 +19,10 @@ case "$1" in
         echo -n '\frac{}{}' | xclip -selection clipboard
         notify_user "Fraction snippet copied to clipboard"
         ;;
+    "text")
+        echo -n '\text{}' | xclip -selection clipboard
+        notify_user "Text snippet copied to clipboard"
+        ;;
     *)
         notify_user "Invalid argument, no action taken"
         ;;
