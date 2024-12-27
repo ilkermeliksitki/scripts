@@ -16,7 +16,7 @@ case "$1" in
         notify_user "anki-mathjax snippet copied to clipboard"
         ;;
     "frac")
-        echo -n '\frac{}{}' | xclip -selection clipboard
+        echo -n '\dfrac{}{}' | xclip -selection clipboard
         notify_user "Fraction snippet copied to clipboard"
         ;;
     "text")
