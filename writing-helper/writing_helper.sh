@@ -23,6 +23,14 @@ case "$1" in
         echo -n '\text{}' | xclip -selection clipboard
         notify_user "Text snippet copied to clipboard"
         ;;
+    "code_inline")
+        echo -n '<span class="codei"></span>' | xclip -selection clipboard
+        notify_user "Inline code snippet for anki copied to clipboard"
+        ;;
+    "code_block")
+        echo -en '<div class="code">\n\n</div>' | xclip -selection clipboard
+        notify_user "Block code snippet for anki copied to clipboard"
+        ;;
     *)
         notify_user "Invalid argument, no action taken"
         ;;
