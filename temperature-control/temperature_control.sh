@@ -10,7 +10,7 @@ fi
 PID=$1
 
 # define the temperature threshold (in °C)
-TEMP_THRESHOLD=80
+TEMP_THRESHOLD=85
 
 # function to get the current temperature
 get_temperature() {
@@ -37,19 +37,18 @@ while true; do
     current_temp=$(get_temperature)
     echo "Current temperature: $current_temp°C"
 
-    if (( $(echo "$current_temp > $TEMP_THRESHOLD" | bc -l) )); then
-        echo "Temperature exceeds threshold ($TEMP_THRESHOLD°C). Pausing the process..."
-        if ps -p "$PID" > /dev/null; then
-            pause_process "$PID"
-            sleep 120
-            echo "Resuming the process..."
-            resume_process "$PID"
-        else
-            echo "Process with PID $PID not found. Exiting."
-            exit 1
-        fi
+    if ! kill -0 "$PID" 2>/dev/null; then
+        echo "Process with PID $PID is not running. Exiting."
+        exit 1
     fi
 
-    sleep 60  # Check the temperature every minute
+    if (( $(echo "$current_temp > $TEMP_THRESHOLD" | bc -l) )); then
+        echo "Temperature exceeds threshold ($TEMP_THRESHOLD°C)."
+        pause_process "$PID"
+        sleep 120
+        resume_process "$PID"
+    fi
+
+    sleep 10 # check temperature every 10 seconds
 done
 
