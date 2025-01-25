@@ -23,6 +23,11 @@ function notify_sound {
     paplay $1 &
 }
 
+# Function to display notification
+function notify {
+    notify-send -u critical "Pomodoro" "$1"
+}
+
 # Function to display countdown timer
 function countdown {
     local seconds=$1
@@ -104,12 +109,16 @@ function pomodoro {
         ((total_focus_periods++))
         echo "Focus $total_focus_periods ($FOCUS_TIME minutes)"
         countdown $(minutes_to_seconds $FOCUS_TIME)
-        notify_sound $FOCUS_END_SOUND
 
         # Check if the desired number of focus periods is reached
         if [ $TOTAL_FOCUS_PERIODS -ne 0 ] && [ $total_focus_periods -ge $TOTAL_FOCUS_PERIODS ]; then
             echo "Completed $TOTAL_FOCUS_PERIODS focus periods. Exiting."
+            notify_sound $FOCUS_END_SOUND # consider changing this to a different sound to indicate completion
+            notify "Completed $TOTAL_FOCUS_PERIODS focus periods. Well done!"
             exit 0
+        else
+            notify_sound $FOCUS_END_SOUND
+            notify "Focus $total_focus_periods completed. Take a break!"
         fi
 
         # Increment the pomodoros completed
@@ -121,11 +130,13 @@ function pomodoro {
             countdown $(minutes_to_seconds $LONG_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
+            notify "Long break is over. Time to focus!"
         else
             echo "Short Break ($SHORT_BREAK minutes)"
             countdown $(minutes_to_seconds $SHORT_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
+            notify "Short break is over. Time to focus!"
         fi
     done
 }
