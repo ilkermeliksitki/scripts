@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the durations (in minutes)
-FOCUS_TIME=50
+FOCUS_TIME=60
 SHORT_BREAK=10
 LONG_BREAK=30
 
