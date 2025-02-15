@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Define the durations (in minutes)
-FOCUS_TIME=25
-SHORT_BREAK=5
-LONG_BREAK=20
+FOCUS_TIME=50
+SHORT_BREAK=10
+LONG_BREAK=30
 
 # Define the number of Pomodoros before a long break
 POMODOROS_BEFORE_LONG_BREAK=4
