@@ -2,3 +2,5 @@ aws-archive/icloud/venv/*
 *.mp4
 *.swp
 *.log
+anki_csv/anki_items.csv
+anki_csv/words.csv
