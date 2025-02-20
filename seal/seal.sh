@@ -46,6 +46,16 @@ if [ "$MODE" == "lock" ]; then
   fi
   RECIPIENT="$2"
 
+  # security check 3: ask yes/no confirmation before encryption
+  echo "Warning: Are you sure you want to run this script?"
+  echo "         It will archive and encrypt the current directory."
+  echo "         Do you want to continue? (y/N)"
+  read -r CONFIRM
+  if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    echo "Aborted. Wise decision!"
+    exit 1
+  fi
+
   # create a temporary directory and archive in it to prevent file change error of tar
   TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
