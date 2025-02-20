@@ -15,11 +15,20 @@ MODE="$1"
 ARCHIVE="locked.tar.gz"
 ENCRYPTED_ARCHIVE="locked.tar.gz.gpg"
 SCRIPT_NAME=$(basename "$0")
+HOME_DIR="${HOME_DIR:-$HOME}"
+HOME_DIR="${HOME_DIR%/}" # remove trailing slash if exists
+CURRENT_DIR="${CURRENT_DIR:-$PWD}"
 
 
-# security Check 1: prevent running as root
+# security check 1: prevent running as root
 if [ "$(id -u)" -eq 0 ]; then
   echo "Error: Do not run this script as root!"
+  exit 1
+fi
+
+# security check 2: prevent running outside home directory
+if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$CURRENT_DIR" != "$HOME_DIR"/* ]]; then
+  echo "Error: This script must be run inside your home directory ($HOME_DIR)."
   exit 1
 fi
 
