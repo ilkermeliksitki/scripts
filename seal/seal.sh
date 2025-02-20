@@ -32,10 +32,9 @@ if [ "$MODE" == "lock" ]; then
   
   # Create a tar.gz archive of the current directory.
   # Exclude the archive files (if they exist) and the script itself.
-  if ! tar --exclude="$ARCHIVE" --exclude="$ENCRYPTED_ARCHIVE" --exclude="$SCRIPT_NAME" -czf "$ARCHIVE" .
+  if ! tar --exclude="$ARCHIVE" --exclude="$ENCRYPTED_ARCHIVE" --exclude="$SCRIPT_NAME" -czf "$ARCHIVE" --warning=no-file-changed .
   then
     echo "Error: Failed to create the archive."
-    exit 1
   fi
 
   # Encrypt the archive with GPG for the specified recipient.
@@ -48,6 +47,11 @@ if [ "$MODE" == "lock" ]; then
   # Remove the unencrypted archive for security.
   rm "$ARCHIVE"
   echo "Lock complete: Encrypted archive saved as '$ENCRYPTED_ARCHIVE'."
+
+  # Deleting the current directory content after encryption
+  echo "Deleting the current directory content after encryption"
+  find . -mindepth 1 ! -name "$ENCRYPTED_ARCHIVE" ! -name "$SCRIPT_NAME" -exec rm -rf {} +
+  echo "Current directory content deleted"
 
 elif [ "$MODE" == "unlock" ]; then
   # Ensure the encrypted archive exists.
@@ -70,9 +74,12 @@ elif [ "$MODE" == "unlock" ]; then
     exit 1
   fi
   
-  # Optionally, remove the temporary tar archive.
+  # remove the temporary tar archive and the encrypted archive
+  # so that the directory is clean after unlocking and turn back
+  # to "clean" state without any encrypted files etc.
   rm "$ARCHIVE"
-  echo "Unlock complete: Repository decrypted and extracted."
+  rm "$ENCRYPTED_ARCHIVE"
+  echo "Unlock complete: Repository decrypted and extracted and cleaned."
   
 else
   echo "Error: Unknown mode '$MODE'"
