@@ -16,6 +16,13 @@ ARCHIVE="locked.tar.gz"
 ENCRYPTED_ARCHIVE="locked.tar.gz.gpg"
 SCRIPT_NAME=$(basename "$0")
 
+
+# security Check 1: prevent running as root
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Error: Do not run this script as root!"
+  exit 1
+fi
+
 if [ -z "$MODE" ]; then
   echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
   exit 1
