@@ -14,9 +14,10 @@
 MODE="$1"
 ARCHIVE="locked.tar.gz"
 ENCRYPTED_ARCHIVE="locked.tar.gz.gpg"
+SCRIPT_NAME=$(basename "$0")
 
 if [ -z "$MODE" ]; then
-  echo "Usage: $0 {lock|unlock} [recipient]"
+  echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
   exit 1
 fi
 
@@ -24,13 +25,10 @@ if [ "$MODE" == "lock" ]; then
   # For encryption, a recipient must be provided.
   if [ -z "$2" ]; then
     echo "Error: Please provide a GPG recipient."
-    echo "Usage: $0 lock recipient@example.com"
+    echo "Usage: $SCRIPT_NAME lock recipient@example.com"
     exit 1
   fi
   RECIPIENT="$2"
-  
-  # Get the name of this script so we can exclude it from the archive.
-  SCRIPT_NAME=$(basename "$0")
   
   # Create a tar.gz archive of the current directory.
   # Exclude the archive files (if they exist) and the script itself.
@@ -78,7 +76,7 @@ elif [ "$MODE" == "unlock" ]; then
   
 else
   echo "Error: Unknown mode '$MODE'"
-  echo "Usage: $0 {lock|unlock} [recipient]"
+  echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
   exit 1
 fi
 
