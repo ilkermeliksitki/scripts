@@ -34,10 +34,12 @@ if [ "$MODE" == "lock" ]; then
   TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
   # move everything to the temporary directory except the script itself and existing archives
-  find . -mindepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name $TEMP_DIR -exec mv {} "$TEMP_DIR" \;
+  find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! \
+    -exec mv {} "$TEMP_DIR" \;
 
   
-  if ! tar -czf "$ARCHIVE" -C "$TEMP_DIR" .
+  # archive the contents of the temporary directory at the current directory
+  if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .
   then
     echo "Error: Failed to create the archive."
   fi
