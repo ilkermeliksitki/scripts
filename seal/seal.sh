@@ -38,6 +38,12 @@ if [ -z "$MODE" ]; then
 fi
 
 if [ "$MODE" == "lock" ]; then
+  if [ -f "$ENCRYPTED_ARCHIVE" ]; then
+    echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' already exists!"
+    echo "       Please unlock the repository first."
+    echo "       Otherwise, it overwrites the existing encrypted archive."
+    exit 1
+  fi
   # For encryption, a recipient must be provided.
   if [ -z "$2" ]; then
     echo "Error: Please provide a GPG recipient."
