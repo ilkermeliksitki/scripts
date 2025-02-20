@@ -29,10 +29,15 @@ if [ "$MODE" == "lock" ]; then
     exit 1
   fi
   RECIPIENT="$2"
+
+  # create a temporary directory and archive in it to prevent file change error of tar
+  TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
+
+  # move everything to the temporary directory except the script itself and existing archives
+  find . -mindepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name $TEMP_DIR -exec mv {} "$TEMP_DIR" \;
+
   
-  # Create a tar.gz archive of the current directory.
-  # Exclude the archive files (if they exist) and the script itself.
-  if ! tar --exclude="$ARCHIVE" --exclude="$ENCRYPTED_ARCHIVE" --exclude="$SCRIPT_NAME" -czf "$ARCHIVE" --warning=no-file-changed .
+  if ! tar -czf "$ARCHIVE" -C "$TEMP_DIR" .
   then
     echo "Error: Failed to create the archive."
   fi
@@ -41,17 +46,15 @@ if [ "$MODE" == "lock" ]; then
   if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
   then
     echo "Error: GPG encryption failed."
+    rm -rf "$TEMP_DIR"
+    rm -f "$ARCHIVE"
     exit 1
   fi
   
-  # Remove the unencrypted archive for security.
+  # Remove the unencrypted archive for security and temporary directory
+  rm -rf "$TEMP_DIR"
   rm "$ARCHIVE"
   echo "Lock complete: Encrypted archive saved as '$ENCRYPTED_ARCHIVE'."
-
-  # Deleting the current directory content after encryption
-  echo "Deleting the current directory content after encryption"
-  find . -mindepth 1 ! -name "$ENCRYPTED_ARCHIVE" ! -name "$SCRIPT_NAME" -exec rm -rf {} +
-  echo "Current directory content deleted"
 
 elif [ "$MODE" == "unlock" ]; then
   # Ensure the encrypted archive exists.
