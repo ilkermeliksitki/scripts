@@ -37,90 +37,90 @@ if [ -z "$MODE" ]; then
   exit 1
 fi
 
-if [ "$MODE" == "lock" ]; then
-  if [ -f "$ENCRYPTED_ARCHIVE" ]; then
-    echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' already exists!"
-    echo "       Please unlock the repository first."
-    echo "       Otherwise, it overwrites the existing encrypted archive."
-    exit 1
-  fi
-  # For encryption, a recipient must be provided.
-  if [ -z "$2" ]; then
-    echo "Error: Please provide a GPG recipient."
-    echo "Usage: $SCRIPT_NAME lock recipient@example.com"
-    exit 1
-  fi
-  RECIPIENT="$2"
+case "$MODE" in
+  lock)
+    if [ -f "$ENCRYPTED_ARCHIVE" ]; then
+      echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' already exists!"
+      echo "       Please unlock the repository first."
+      echo "       Otherwise, it overwrites the existing encrypted archive."
+      exit 1
+    fi
+    # For encryption, a recipient must be provided.
+    if [ -z "$2" ]; then
+      echo "Error: Please provide a GPG recipient."
+      echo "Usage: $SCRIPT_NAME lock recipient@example.com"
+      exit 1
+    fi
+    RECIPIENT="$2"
 
-  # security check 3: ask yes/no confirmation before encryption
-  echo "Warning: Are you sure you want to run this script?"
-  echo "         It will archive and encrypt the current directory."
-  echo "         Do you want to continue? (y/N)"
-  read -r CONFIRM
-  if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-    echo "Aborted. Wise decision!"
-    exit 1
-  fi
+    # security check 3: ask yes/no confirmation before encryption
+    echo "Warning: Are you sure you want to run this script?"
+    echo "         It will archive and encrypt the current directory."
+    echo "         Do you want to continue? (y/N)"
+    read -r CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+      echo "Aborted. Wise decision!"
+      exit 1
+    fi
 
-  # create a temporary directory and archive in it to prevent file change error of tar
-  TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
+    # create a temporary directory and archive in it to prevent file change error of tar
+    TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
-  # move everything to the temporary directory except the script itself and existing archives
-  find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! \
-    -exec mv {} "$TEMP_DIR" \;
+    # move everything to the temporary directory except the script itself and existing archives
+    find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! \
+      -exec mv {} "$TEMP_DIR" \;
 
-  
-  # archive the contents of the temporary directory at the current directory
-  if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .
-  then
-    echo "Error: Failed to create the archive."
-  fi
 
-  # Encrypt the archive with GPG for the specified recipient.
-  if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
-  then
-    echo "Error: GPG encryption failed."
+    # archive the contents of the temporary directory at the current directory
+    if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .
+    then
+      echo "Error: Failed to create the archive."
+    fi
+
+    # Encrypt the archive with GPG for the specified recipient.
+    if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
+    then
+      echo "Error: GPG encryption failed."
+      rm -rf "$TEMP_DIR"
+      rm -f "$ARCHIVE"
+      exit 1
+    fi
+
+    # Remove the unencrypted archive for security and temporary directory
     rm -rf "$TEMP_DIR"
-    rm -f "$ARCHIVE"
-    exit 1
-  fi
-  
-  # Remove the unencrypted archive for security and temporary directory
-  rm -rf "$TEMP_DIR"
-  rm "$ARCHIVE"
-  echo "Lock complete: Encrypted archive saved as '$ENCRYPTED_ARCHIVE'."
+    rm "$ARCHIVE"
+    echo "Lock complete: Encrypted archive saved as '$ENCRYPTED_ARCHIVE'."
+    ;;
+  unlock)
+    # Ensure the encrypted archive exists.
+    if [ ! -f "$ENCRYPTED_ARCHIVE" ]; then
+      echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' not found!"
+      exit 1
+    fi
 
-elif [ "$MODE" == "unlock" ]; then
-  # Ensure the encrypted archive exists.
-  if [ ! -f "$ENCRYPTED_ARCHIVE" ]; then
-    echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' not found!"
-    exit 1
-  fi
-  
-  # Decrypt the archive.
-  if ! gpg --yes --output "$ARCHIVE" --decrypt "$ENCRYPTED_ARCHIVE"
-  then
-    echo "Error: GPG decryption failed."
-    exit 1
-  fi
-  
-  # Extract the decrypted tar.gz archive.
-  if ! tar -xzf "$ARCHIVE"
-  then
-    echo "Error: Failed to extract the archive."
-    exit 1
-  fi
-  
-  # remove the temporary tar archive and the encrypted archive
-  # so that the directory is clean after unlocking and turn back
-  # to "clean" state without any encrypted files etc.
-  rm "$ARCHIVE"
-  rm "$ENCRYPTED_ARCHIVE"
-  echo "Unlock complete: Repository decrypted and extracted and cleaned."
-  
-else
-  echo "Error: Unknown mode '$MODE'"
-  echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
-  exit 1
-fi
+    # Decrypt the archive.
+    if ! gpg --yes --output "$ARCHIVE" --decrypt "$ENCRYPTED_ARCHIVE"
+    then
+      echo "Error: GPG decryption failed."
+      exit 1
+    fi
 
+    # Extract the decrypted tar.gz archive.
+    if ! tar -xzf "$ARCHIVE"
+    then
+      echo "Error: Failed to extract the archive."
+      exit 1
+    fi
+
+    # remove the temporary tar archive and the encrypted archive
+    # so that the directory is clean after unlocking and turn back
+    # to "clean" state without any encrypted files etc.
+    rm "$ARCHIVE"
+    rm "$ENCRYPTED_ARCHIVE"
+    echo "Unlock complete: Repository decrypted and extracted and cleaned."
+    ;;
+  *)
+    echo "Error: Unknown mode '$MODE'"
+    echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
+    exit 1
+esac
