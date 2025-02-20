@@ -32,15 +32,15 @@ if [ "$MODE" == "lock" ]; then
   
   # Create a tar.gz archive of the current directory.
   # Exclude the archive files (if they exist) and the script itself.
-  tar --exclude="$ARCHIVE" --exclude="$ENCRYPTED_ARCHIVE" --exclude="$SCRIPT_NAME" -czf "$ARCHIVE" .
-  if [ $? -ne 0 ]; then
+  if ! tar --exclude="$ARCHIVE" --exclude="$ENCRYPTED_ARCHIVE" --exclude="$SCRIPT_NAME" -czf "$ARCHIVE" .
+  then
     echo "Error: Failed to create the archive."
     exit 1
   fi
 
   # Encrypt the archive with GPG for the specified recipient.
-  gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
-  if [ $? -ne 0 ]; then
+  if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
+  then
     echo "Error: GPG encryption failed."
     exit 1
   fi
@@ -57,15 +57,15 @@ elif [ "$MODE" == "unlock" ]; then
   fi
   
   # Decrypt the archive.
-  gpg --yes --output "$ARCHIVE" --decrypt "$ENCRYPTED_ARCHIVE"
-  if [ $? -ne 0 ]; then
+  if ! gpg --yes --output "$ARCHIVE" --decrypt "$ENCRYPTED_ARCHIVE"
+  then
     echo "Error: GPG decryption failed."
     exit 1
   fi
   
   # Extract the decrypted tar.gz archive.
-  tar -xzf "$ARCHIVE"
-  if [ $? -ne 0 ]; then
+  if ! tar -xzf "$ARCHIVE"
+  then
     echo "Error: Failed to extract the archive."
     exit 1
   fi
