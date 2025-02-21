@@ -63,13 +63,33 @@ case "$MODE" in
       exit 1
     fi
 
+    # check if .git directory exists, if so, ask confirmation to encrypt it
+    if [ -d ".git" ]; then
+      # ask confirmation to encrypt .git directory
+      echo "Warning: There is a .git directory in the repository."
+      echo "         Do you want to include it in the encrypted archive? (y/N)"
+      read -r CONFIRM_GIT
+      if [[ "$CONFIRM_GIT" =~ ^[Yy]$ ]]; then
+        INCLUDE_GIT=true
+      else
+        INCLUDE_GIT=false
+      fi
+    else
+      INCLUDE_GIT=false
+    fi
+
     # create a temporary directory and archive in it to prevent file change error of tar
     TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
-    # move everything to the temporary directory except the script itself and existing archives
-    find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! \
-      -exec mv {} "$TEMP_DIR" \;
-
+    # move everything to the temporary directory except the script itself
+    # existing archives and git directory (by choice)
+    if [ "$INCLUDE_GIT" = true ]; then
+      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" \
+        -exec mv {} "$TEMP_DIR" \;
+    else
+      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! -name ".git" \
+        -exec mv {} "$TEMP_DIR" \;
+    fi
 
     # archive the contents of the temporary directory at the current directory
     if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .
