@@ -3,11 +3,11 @@
 from datetime import datetime, timedelta
 
 SESSION_PER_ROUND = 4
-FOCUS_LENGTH = 25
-SHORT_BREAK_LENGTH = 5
-LONG_BREAK_LENGTH = 20
+FOCUS_LENGTH = 60
+SHORT_BREAK_LENGTH = 10
+LONG_BREAK_LENGTH = 30
 
-YEAR = 2024
+YEAR = 2025
 
 def add_line(line_starting_moment, session_name_, duration):
     temp = ",".join(
