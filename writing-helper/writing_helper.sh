@@ -24,7 +24,7 @@ case "$1" in
         notify_user "Text snippet copied to clipboard"
         ;;
     "infty")
-        echo -n '\int_{-\infty}^{\infty}' | xclip -selection clipboard
+        echo -n '\int \limits_{-\infty}^{\infty}' | xclip -selection clipboard
         notify_user "Infinity snippet copied to clipboard"
         ;;
     "code_inline")
