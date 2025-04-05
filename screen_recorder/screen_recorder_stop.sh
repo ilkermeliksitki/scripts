@@ -20,3 +20,5 @@ else
   notify-send "No active recording found"
 fi
 
+# go back to default mode (from screen-recorder mode)
+i3-msg mode "default"
