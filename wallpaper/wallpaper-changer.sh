@@ -21,8 +21,12 @@ if [ -z "$random_image" ]; then
     exit 1
 fi
 
-# rename the current wallpaper as a new random name
-new_name=$(date +%s).jpg  # Use timestamp for a unique name
+# rename the current wallpaper as a new random name until it doesn't exist
+new_name="$(date +%s)-$RANDOM.jpg"
+while [[ -e "$wallpaper_dir/$new_name" ]]; do
+    new_name="$(date +%s)-$RANDOM.jpg"
+done
+
 mv -v "$wallpaper_dir/main.jpg" "$wallpaper_dir/$new_name" || exit 1
 
 # rename the random image as main.jpg
