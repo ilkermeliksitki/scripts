@@ -12,8 +12,10 @@ PID_FILE="/tmp/ffmpeg_screen_recording.pid"
 OUT_TRACKER="/tmp/ffmpeg_screen_recording_output.tmp"
 LOG_FILE="/tmp/ffmpeg_recording.log"
 
-# Run ffmpeg
-ffmpeg -y -f x11grab -r 30 -s "${W}x${H}" -i ":0.0+$X,$Y" \
+# Run ffmpeg recording vidoe and voice of screen
+ffmpeg -y \
+  -f x11grab -r 30 -s "${W}x${H}" -i ":0.0+$X,$Y" \
+  -f pulse -i "$(pactl list short sources | grep monitor | awk '{print $2}')" \
   -c:v libx264 -preset ultrafast -movflags +faststart "$TMP_FILE" \
   &> "$LOG_FILE" &
 
