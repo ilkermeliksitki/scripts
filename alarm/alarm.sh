@@ -24,5 +24,5 @@ sleep "$time_secs"
 
 # notify
 notify-send "⏰ Alarm" "$msg" &
-paplay voice.mp3 2>/dev/null
+paplay /home/melik/Documents/projects/scripts/alarm/voice.mp3 2>/dev/null
 
