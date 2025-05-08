@@ -1,7 +1,17 @@
+#! /home/melik/Documents/projects/scripts/to_pdf/venv/bin/python3
+
+import sys
 from PIL import Image
+from PIL import ExifTags
 
 QUALITY = 20
-image = Image.open("passport.jpg")
+#image = Image.open("passport.jpg")
+# provide image as input argument
+if len(sys.argv) != 2:
+    print("Usage: to-pdf <image_path>")
+    sys.exit(1)
+
+image = sys.argv[1]
 
 # Check for EXIF metadata
 try:
@@ -20,6 +30,8 @@ try:
             image = image.rotate(270, expand=True)
         elif orientation == 8:
             image = image.rotate(90, expand=True)
+        else:
+            image = image.rotate(0, expand=True)
 except AttributeError:
     # If no EXIF metadata exists, do nothing
     pass
