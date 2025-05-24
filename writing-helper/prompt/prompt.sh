@@ -27,19 +27,19 @@ case "$1" in
     "complicated_anki_card")
         CLIP_TEXT=$(xclip -selection clipboard -o)
         prompt="The following anki card is so complicated. Make it simpler, easier to understand, and \
-suitable for long-term memory: \`\`\`$CLIP_TEXT"\`\`\`
+suitable for long-term memory: $CLIP_TEXT. PS: if there is an <img> tag, preserve it."
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Complicated anki card prompt copied to clipboard"
         ;;
     "teach")
-        subject=$(zenity --entry --title="Sujcet to teach" --text="What do you want to learn about?")
+        subject=$(zenity --entry --title="Sujcet to teach" --text="What do you want to learn about? default: clipboard content" --entry-text="$(xclip -selection clipboard -o)")
         if [ -z "$subject" ]; then
             notify_user "No subject provided, exiting."
             exit 1
         fi
-        prompt="I didn't understand at all. I would like you to ask me questions to achieve to \
-learn about $subject. You should ask questions until I can answer questions flawlessly. You can \
-ask multiple choice questions, true or false questions, and open-ended question"
+        prompt="I didn't understand at all the concepts in this subject. I would like you to ask me questions \
+to achieve to learn about <subject>$subject</subject>. You should ask questions until I can answer questions \
+flawlessly. You can ask multiple choice questions, true or false questions, and open-ended question"
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Teach prompt copied to clipboard"
         ;;
