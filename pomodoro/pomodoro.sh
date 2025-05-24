@@ -25,7 +25,9 @@ function notify_sound {
 
 # Function to display notification
 function notify {
-    notify-send -u critical "Pomodoro" "$1"
+    local urgency=${1:-normal}
+    local message=${2}
+    notify-send -u $urgency "Pomodoro" "$message"
 }
 
 # Function to display countdown timer
@@ -114,7 +116,7 @@ function pomodoro {
         if [ $TOTAL_FOCUS_PERIODS -ne 0 ] && [ $total_focus_periods -ge $TOTAL_FOCUS_PERIODS ]; then
             echo "Completed $TOTAL_FOCUS_PERIODS focus periods. Exiting."
             notify_sound $FOCUS_END_SOUND # consider changing this to a different sound to indicate completion
-            notify "Completed $TOTAL_FOCUS_PERIODS focus periods. Well done!"
+            notify "critical" "Completed $TOTAL_FOCUS_PERIODS focus periods. Well done!"
             exit 0
         else
             notify_sound $FOCUS_END_SOUND
@@ -130,13 +132,13 @@ function pomodoro {
             countdown $(minutes_to_seconds $LONG_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
-            notify "Long break is over. Time to focus!"
+            notify "critical" "Long break is over. Time to focus!"
         else
             echo "Short Break ($SHORT_BREAK minutes)"
             countdown $(minutes_to_seconds $SHORT_BREAK)
             echo "----------"
             notify_sound $BREAK_END_SOUND
-            notify "Short break is over. Time to focus!"
+            notify "critical" "Short break is over. Time to focus!"
         fi
     done
 }
