@@ -24,6 +24,13 @@ case "$1" in
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Provide example prompt copied to clipboard"
         ;;
+    "complicated_anki_card")
+        CLIP_TEXT=$(xclip -selection clipboard -o)
+        prompt="The following anki card is so complicated. Make it simpler, easier to understand, and \
+suitable for long-term memory: ```$CLIP_TEXT"```
+        echo -n "$prompt" | xclip -selection clipboard
+        notify_user "Complicated anki card prompt copied to clipboard"
+        ;;
     "teach")
         subject=$(zenity --entry --title="Sujcet to teach" --text="What do you want to learn about?")
         if [ -z "$subject" ]; then
