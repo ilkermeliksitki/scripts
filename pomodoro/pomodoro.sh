@@ -25,7 +25,7 @@ function notify_sound {
 
 # Function to display notification
 function notify {
-    local urgency=${1:-normal}
+    local urgency=${1}
     local message=${2}
     notify-send -u $urgency "Pomodoro" "$message"
 }
@@ -120,7 +120,7 @@ function pomodoro {
             exit 0
         else
             notify_sound $FOCUS_END_SOUND
-            notify "Focus $total_focus_periods completed. Take a break!"
+            notify "normal" "Focus $total_focus_periods completed. Take a break!"
         fi
 
         # Increment the pomodoros completed
