@@ -68,12 +68,23 @@ for content_dict in contents:
                 os.makedirs(music_folder)
             command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
             subprocess.run(command, shell=True)
+
+            # play the downloaded audio with mpv
+            subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
         elif choice == 'v':
             video_folder = os.path.expanduser('~/Videos/youtube')
             if not os.path.exists(video_folder):
                 os.makedirs(video_folder)
-            command = f'yt-dlp -o "{video_folder}/%(title)s.%(ext)s" {video_id}'
+            command = (
+                f'yt-dlp -f "bestvideo[height<=720]+bestaudio" '
+                f'--merge-output-format mp4 '
+                f'-o "{video_folder}/%(title)s.%(ext)s" {video_id}'
+            )
+
             subprocess.run(command, shell=True)
+
+            # play the downloaded video with mpv
+            subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
         else:
             continue
 
