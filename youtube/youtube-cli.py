@@ -50,12 +50,16 @@ for content_dict in contents:
         title = content_dict['videoRenderer']['title']['runs'][0]['text']
         view_count = content_dict['videoRenderer']['viewCountText']['simpleText']
         owner = content_dict['videoRenderer']['ownerText']['runs'][0]['text']
+        published_time = content_dict['videoRenderer']['publishedTimeText']['simpleText']
+        length_text = content_dict['videoRenderer']['lengthText']['accessibility']['accessibilityData']['label']
 
         print()
         print(title)
         print(video_id)
         print(view_count)
+        print(length_text)
         print(owner)
+        print(published_time)
 
         choice = input('Enter your choice (enter to continue): ').strip().lower()
         if choice == 'a':
