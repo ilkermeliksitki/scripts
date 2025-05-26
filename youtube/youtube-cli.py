@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import json
 import argparse
 import requests
 import subprocess
-
-# the location for downloading
-os.chdir('/home/melik/Videos/youtube/')
 
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
@@ -39,44 +35,43 @@ response = requests.post(endpoint, json=payload)
 
 # Parse the response JSON
 response_json = json.loads(response.content.decode())
-ls = response_json['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents']
-for i in ls:
-    ls2 = i['itemSectionRenderer']['contents']
-    for j in ls2:
-        try:
-            video_renderer = j['videoRenderer']
-            # video id
-            video_id = video_renderer['videoId']
-            print(video_id)
-            # video name
-            # video_name = video_renderer['title']['runs'][0]['text']
-            # print(video_name)
-            # video name with date
-            video_name_with_date = video_renderer['title']['accessibility']['accessibilityData']['label']
-            print(video_name_with_date)
 
-            # video length
-            print(video_renderer['lengthText']['simpleText'])
-            print(video_renderer['viewCountText']['simpleText'])
-            print(video_renderer['ownerText']['runs'][0]['text'])
-            print('-' * 100)
-            try:
-                inp = input('Enter for the next one, w for watch: ')
-            except KeyboardInterrupt:
-                print()
-                sys.exit(1)
-            except EOFError:
-                print()
-                sys.exit(2)
-            if inp == 'w':
-                opt_name = input('Enter the output name of the youtube video: ')
-                if opt_name == "":
-                    subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id}', shell=True)
-                    subprocess.run(f'mpv *{video_id}*', shell=True)
-                else:
-                    subprocess.run(f'yt-dlp -f bestvideo+bestaudio -- {video_id} -o {opt_name}', shell=True)
-                    subprocess.run(f'mpv *{opt_name}*', shell=True)
-            sys.exit(0)
-        except KeyError:
-            pass
-    break
+contents = response_json['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents']
+
+print('Press a to download the audio to mp3 format to ~/Music folder.')
+print('Press v to download the video to ~/Videos/youtube folder.')
+
+for content_dict in contents:
+    if 'showingResultsForRenderer' in content_dict.keys():
+        continue
+
+    if 'videoRenderer' in content_dict.keys():
+        video_id = content_dict['videoRenderer']['videoId']
+        title = content_dict['videoRenderer']['title']['runs'][0]['text']
+        view_count = content_dict['videoRenderer']['viewCountText']['simpleText']
+        owner = content_dict['videoRenderer']['ownerText']['runs'][0]['text']
+
+        print()
+        print(title)
+        print(video_id)
+        print(view_count)
+        print(owner)
+
+        choice = input('Enter your choice (enter to continue): ').strip().lower()
+        if choice == 'a':
+            music_folder = os.path.expanduser('~/Music')
+            if not os.path.exists(music_folder):
+                os.makedirs(music_folder)
+            command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
+            subprocess.run(command, shell=True)
+        elif choice == 'v':
+            video_folder = os.path.expanduser('~/Videos/youtube')
+            if not os.path.exists(video_folder):
+                os.makedirs(video_folder)
+            command = f'yt-dlp -o "{video_folder}/%(title)s.%(ext)s" {video_id}'
+            subprocess.run(command, shell=True)
+        else:
+            continue
+
+        print('\n')
+
