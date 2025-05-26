@@ -41,52 +41,54 @@ contents = response_json['contents']['twoColumnSearchResultsRenderer']['primaryC
 print('Press a to download the audio to mp3 format to ~/Music folder.')
 print('Press v to download the video to ~/Videos/youtube folder.')
 
-for content_dict in contents:
-    if 'showingResultsForRenderer' in content_dict.keys():
-        continue
-
-    if 'videoRenderer' in content_dict.keys():
-        video_id = content_dict['videoRenderer']['videoId']
-        title = content_dict['videoRenderer']['title']['runs'][0]['text']
-        view_count = content_dict['videoRenderer']['viewCountText']['simpleText']
-        owner = content_dict['videoRenderer']['ownerText']['runs'][0]['text']
-        published_time = content_dict['videoRenderer']['publishedTimeText']['simpleText']
-        length_text = content_dict['videoRenderer']['lengthText']['accessibility']['accessibilityData']['label']
-
-        print()
-        print(title)
-        print(video_id)
-        print(view_count)
-        print(length_text)
-        print(owner)
-        print(published_time)
-
-        choice = input('Enter your choice (enter to continue): ').strip().lower()
-        if choice == 'a':
-            music_folder = os.path.expanduser('~/Music')
-            if not os.path.exists(music_folder):
-                os.makedirs(music_folder)
-            command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
-            subprocess.run(command, shell=True)
-
-            # play the downloaded audio with mpv
-            subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
-        elif choice == 'v':
-            video_folder = os.path.expanduser('~/Videos/youtube')
-            if not os.path.exists(video_folder):
-                os.makedirs(video_folder)
-            command = (
-                f'yt-dlp -f "bestvideo[height<=720]+bestaudio" '
-                f'--merge-output-format mp4 '
-                f'-o "{video_folder}/%(title)s.%(ext)s" {video_id}'
-            )
-
-            subprocess.run(command, shell=True)
-
-            # play the downloaded video with mpv
-            subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
-        else:
+try:
+    for content_dict in contents:
+        if 'showingResultsForRenderer' in content_dict.keys():
             continue
 
+        if 'videoRenderer' in content_dict.keys():
+            video_id = content_dict['videoRenderer']['videoId']
+            title = content_dict['videoRenderer']['title']['runs'][0]['text']
+            view_count = content_dict['videoRenderer']['viewCountText']['simpleText']
+            owner = content_dict['videoRenderer']['ownerText']['runs'][0]['text']
+            published_time = content_dict['videoRenderer']['publishedTimeText']['simpleText']
+            length_text = content_dict['videoRenderer']['lengthText']['accessibility']['accessibilityData']['label']
+
+            print()
+            print(title)
+            print(video_id)
+            print(view_count)
+            print(length_text)
+            print(owner)
+            print(published_time)
+
+            choice = input('Enter your choice (enter to continue): ').strip().lower()
+            if choice == 'a':
+                music_folder = os.path.expanduser('~/Music')
+                if not os.path.exists(music_folder):
+                    os.makedirs(music_folder)
+                command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
+                subprocess.run(command, shell=True)
+
+                # play the downloaded audio with mpv
+                subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
+            elif choice == 'v':
+                video_folder = os.path.expanduser('~/Videos/youtube')
+                if not os.path.exists(video_folder):
+                    os.makedirs(video_folder)
+                command = (
+                    f'yt-dlp -f "bestvideo[height<=720]+bestaudio" '
+                    f'--merge-output-format mp4 '
+                    f'-o "{video_folder}/%(title)s.%(ext)s" {video_id}'
+                )
+
+                subprocess.run(command, shell=True)
+
+                # play the downloaded video with mpv
+                subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
+            else:
+                continue
         print('\n')
+except KeyboardInterrupt:
+    print('\nExiting...')
 
