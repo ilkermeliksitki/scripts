@@ -47,12 +47,13 @@ try:
             continue
 
         if 'videoRenderer' in content_dict.keys():
-            video_id = content_dict['videoRenderer']['videoId']
-            title = content_dict['videoRenderer']['title']['runs'][0]['text']
-            view_count = content_dict['videoRenderer']['viewCountText']['simpleText']
-            owner = content_dict['videoRenderer']['ownerText']['runs'][0]['text']
-            published_time = content_dict['videoRenderer']['publishedTimeText']['simpleText']
-            length_text = content_dict['videoRenderer']['lengthText']['accessibility']['accessibilityData']['label']
+            video_id = content_dict.get('videoRenderer', {}).get('videoId', '')
+            title = content_dict.get('videoRenderer', {}).get('title', {}).get('runs', [{}])[0].get('text', '')
+            view_count = content_dict.get('videoRenderer', {}).get('viewCountText', {}).get('simpleText', '')
+            length_text = content_dict.get('videoRenderer', {}).get('lengthText', {}).get('accessibility', {}).\
+                    get('accessibilityData', {}).get('label', '')
+            owner = content_dict.get('videoRenderer', {}).get('ownerText', {}).get('runs', [{}])[0].get('text', '')
+            published_time = content_dict.get('videoRenderer', {}).get('publishedTimeText', {}).get('simpleText', '')
 
             print()
             print(title)
