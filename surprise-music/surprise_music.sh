@@ -4,6 +4,9 @@
 MIN_WAIT=5
 MAX_WAIT=20
 
+# catch Ctrl-C to stop everything
+trap "echo -e '\n🛑 Interrupted. Exiting...'; exit 0" SIGINT
+
 # default music directory
 DEFAULT_DIR="$HOME/Music"
 
