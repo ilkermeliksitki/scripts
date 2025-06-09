@@ -13,15 +13,18 @@ DEFAULT_DIR="$HOME/Music"
 # use first argument if provided, else default
 TARGET=${1:-$DEFAULT_DIR}
 
+random_sleep() {
+    SLEEP_TIME=$(( RANDOM % (MAX_WAIT - MIN_WAIT + 1) + MIN_WAIT ))
+    echo "⏸️ Waiting for $SLEEP_TIME seconds before next surprise..."
+    sleep "$SLEEP_TIME"
+}
+
 # check if input is a directory or a file
 if [[ -f "$TARGET" ]]; then
     while true; do
         echo "▶️ Playing: $(basename "$TARGET")"
         mpv --no-video "$TARGET"
-
-        SLEEP_TIME=$(( RANDOM % (MAX_WAIT - MIN_WAIT + 1) + MIN_WAIT ))
-        echo "⏸️ Waiting for $SLEEP_TIME seconds before next surprise..."
-        sleep "$SLEEP_TIME"
+        random_sleep
     done
 
 elif [[ -d "$TARGET" ]]; then
@@ -30,10 +33,7 @@ elif [[ -d "$TARGET" ]]; then
         if [[ -n "$FILE" ]]; then
             echo "▶️ Playing: $(basename "$FILE")"
             mpv --no-video "$FILE"
-
-            SLEEP_TIME=$(( RANDOM % (MAX_WAIT - MIN_WAIT + 1) + MIN_WAIT ))
-            echo "⏸️ Waiting for $SLEEP_TIME seconds before next surprise..."
-            sleep "$SLEEP_TIME"
+            random_sleep
         else
             echo "❌ No music files found in directory."
             exit 1
