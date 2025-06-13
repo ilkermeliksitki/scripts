@@ -54,10 +54,14 @@ trap handle_sigint SIGINT
 # Parse command-line arguments
 TOTAL_FOCUS_PERIODS=0
 
-while getopts ":f:" opt; do
+# get options f and l
+while getopts ":f:l:" opt; do
     case $opt in
         f)
             TOTAL_FOCUS_PERIODS=$OPTARG
+            ;;
+        l)
+            POMODOROS_BEFORE_LONG_BREAK=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
