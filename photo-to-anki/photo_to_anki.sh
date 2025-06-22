@@ -1,25 +1,36 @@
 #!/bin/bash
 
 API_KEY=$OPENAI_API_KEY
-PNG_IMG="/tmp/slide.png"
-JPG_IMG="/tmp/slide.jpg"
 
-PROMPT="Please create Anki cards based on the provided image. The image contains lecture content that will be asked in the exam, so ensure that you do not miss any important information. Your goal is to help me master the subject through spaced repetition. But first, identify the most essential concepts in the image and then generate modular Anki cards that promote long-term understanding. The cards should be clear, concise, and self-contained. If helpful, include relevant examples or explanations on the back of the card. Be careful about not missing important information."
+RAND=$(head /dev/urandom | tr -dc a-z0-9 | head -c6)
+PNG_IMG="/tmp/slide_${RAND}.png"
+JPG_IMG="/tmp/slide_${RAND}.jpg"
 
-flameshot gui -c
+PROMPT="You are a learning and subject-matter expert. Your task is to deeply understand the core principles given in the picture. Then, think like the experts in the field, such as a physics professor or senior software engineer depending on the subject. Then explain the concepts clearly. If applicable, provide some toy examples to make the explanation more understandable. Then, create high-quality, modular Anki cards that promote long-term understanding. Also, include relevant examples or explanations on the back of the card if applicable. Note that the provided content is lecture content and it will be asked in the exam. So be careful about not missing important information. Your long-term goal is to help me master the subject through spaced repetition. If there are mathematical equations, write them in LaTeX format. If there are code snippets, write them in a code block."
 
-xclip -selection clipboard -t image/png -o > "$PNG_IMG"
+# capture screenshot
+flameshot gui -p "$PNG_IMG" > /dev/null 2>&1
+
+if [ ! -s "$PNG_IMG" ]; then
+  notify-send "Cancellation" "Job cancelled or no image captured."
+  exit 1
+fi
+
+# save image to clipboard for practical use
+xclip -selection clipboard -t image/png -i "$PNG_IMG"
 
 # convert to jpg to reduce size and save bandwidth
 convert "$PNG_IMG" -quality 70 "$JPG_IMG"
 
 if [ ! -s "$JPG_IMG" ]; then
-  echo "❌ Error: No image in clipboard. Did you press Ctrl+C after screenshot?"
+  notify-send "Error" "Failed to convert image to JPG or the file is empty."
   exit 1
 fi
 
 # convert image to base64 to be able to send the picture vial api
 BASE64_IMAGE=$(base64 -w 0 "$JPG_IMG")
+
+notify-send "Processing" "Generating Anki cards from the image..."
 
 RESPONSE=$(curl -s https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $API_KEY" \
@@ -59,8 +70,12 @@ echo "$RESPONSE" | jq -r '
   | select(.type == "message")
   | .content[]
   | select(.type == "output_text")
-  | .text'
-> /home/melik/Documents/projects/scripts/photo-to-anki/output.txt
+  | .text' > /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt
 
-cat /home/melik/Documents/projects/scripts/photo-to-anki/output.txt | pandoc -f markdown -t plain
+#cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt | pandoc -f markdown -t plain -o /home/melik/Documents/projects/scripts/photo-to-anki/output.txt
+
+cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt
+
+# go back to default mode
+i3-msg mode "default" > /dev/null 2>&1
 
