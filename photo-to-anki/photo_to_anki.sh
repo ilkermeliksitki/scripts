@@ -6,7 +6,12 @@ RAND=$(head /dev/urandom | tr -dc a-z0-9 | head -c6)
 PNG_IMG="/tmp/slide_${RAND}.png"
 JPG_IMG="/tmp/slide_${RAND}.jpg"
 
-PROMPT="You are a learning and subject-matter expert. Your task is to deeply understand the core principles given in the picture. Then, think like the experts in the field, such as a physics professor or senior software engineer depending on the subject. Then explain the concepts clearly. If applicable, provide some toy examples to make the explanation more understandable. Then, create high-quality, modular Anki cards that promote long-term understanding. Also, include relevant examples or explanations on the back of the card if applicable. Note that the provided content is lecture content and it will be asked in the exam. So be careful about not missing important information. Your long-term goal is to help me master the subject through spaced repetition. If there are mathematical equations, write them in LaTeX format. If there are code snippets, write them in a code block."
+# prompt the user for their question
+USER_QUESTION=$(zenity --entry --title="Your Question" --text="What is your question about the image?")
+
+PERSONA_PROMPT="You are a learning and subject-matter expert. Your task is to deeply understand the core principles given in the picture. Then, think like the experts in the field, such as a physics professor or senior software engineer depending on the subject. Then explain the concepts clearly. If applicable, provide some toy examples to make the explanation more understandable. Then, create high-quality, modular Anki cards that promote long-term understanding. Also, include relevant examples or explanations on the back of the card if applicable. Note that the provided content is lecture content and it will be asked in the exam. So be careful about not missing important information. Your long-term goal is to help me master the subject through spaced repetition. If there are mathematical equations, write them in LaTeX format. If there are code snippets, write them in a code block."
+
+FULL_PROMPT="${USER_QUESTION}\n\n${PERSONA_PROMPT}"
 
 # capture screenshot
 flameshot gui -p "$PNG_IMG" > /dev/null 2>&1
@@ -44,7 +49,7 @@ RESPONSE=$(curl -s https://api.openai.com/v1/responses \
       "content": [
         {
           "type": "input_text",
-          "text": "$PROMPT"
+          "text": "$FULL_PROMPT"
         },
         {
           "type": "input_image",
