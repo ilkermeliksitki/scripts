@@ -101,7 +101,7 @@ while true; do
 
     
     # save the conversation history to a file
-    echo -e "$CONVO_HISTORY" > "$HISTORY_FILE"
+    printf "%s\n" "$CONVO_HISTORY" > "$HISTORY_FILE"
 
     # clip/fetch the last 4 messages from the conversation history
     CLIPPED_HISTORY=$(./clip_history.sh "$HISTORY_FILE" 4)
@@ -151,7 +151,7 @@ while true; do
       break
     fi
 
-    echo -e "\nASSISTANT: $ASSISTANT_REPLY"
+    printf "\nASSISTANT: %s\n" "$ASSISTANT_REPLY"
 
     CONVO_HISTORY=$(printf "%s\n\nASSISTANT: %s" "$CONVO_HISTORY" "$ASSISTANT_REPLY")
 done
