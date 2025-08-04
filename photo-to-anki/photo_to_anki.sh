@@ -37,6 +37,7 @@ BASE64_IMAGE=$(base64 -w 0 "$JPG_IMG")
 
 notify-send "Processing" "Generating Anki cards from the image..."
 
+#TODO create json payload for the API request separately
 RESPONSE=$(curl -s https://api.openai.com/v1/responses \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
@@ -63,8 +64,6 @@ RESPONSE=$(curl -s https://api.openai.com/v1/responses \
       "type": "text"
     }
   },
-  "temperature": 1,
-  "top_p": 1,
   "max_output_tokens": 2048
 }
 EOF
@@ -77,16 +76,18 @@ echo "$RESPONSE" | jq -r '
   | select(.type == "output_text")
   | .text' > /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt
 
-#cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt | pandoc -f markdown -t plain -o /home/melik/Documents/projects/scripts/photo-to-anki/output.txt
-
-cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt
-
 # go back to default mode
 i3-msg mode "default" > /dev/null 2>&1
 
 RESPONSE_TEXT=$(cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt)
 
+# print the response to the terminal
+echo -e "\nASSISTANT: $RESPONSE_TEXT"
+
 CONVO_HISTORY="USER: ${USER_QUESTION}\n\nASSISTANT: ${RESPONSE_TEXT}"
+
+#TODO change the file location later to tmp folder
+HISTORY_FILE="/home/melik/Documents/projects/scripts/photo-to-anki/convo_history.txt"
 
 echo
 echo "You can now ask follow-up questions in the terminal (type 'exit' to quit):"
@@ -95,8 +96,14 @@ while true; do
     read -p "> " FOLLOW_UP
     [[ "$FOLLOW_UP" == "exit" ]] && break
 
-    # append follow-up to the chat history
+    # append the follow-up question to the conversation history
     CONVO_HISTORY="${CONVO_HISTORY}\n\nUSER: ${FOLLOW_UP}"
+    
+    # save the conversation history to a file
+    echo -e "$CONVO_HISTORY" > "$HISTORY_FILE"
+
+    # clip/fetch the last 4 messages from the conversation history
+    CLIPPED_HISTORY=$(./clip_history.sh "$HISTORY_FILE" 4)
 
     # build full prompt without re-sending the image
     FULL_FOLLOWUP_PROMPT="${CONVO_HISTORY}\n\nASSISTANT:"
@@ -120,7 +127,7 @@ while true; do
           type: "text"
         }
       },
-      max_output_tokens: 1024
+      max_output_tokens: 2048,
     }')
 
     # send requests
