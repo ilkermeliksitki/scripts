@@ -6,10 +6,10 @@ RAND=$(head /dev/urandom | tr -dc a-z0-9 | head -c6)
 PNG_IMG="/tmp/slide_${RAND}.png"
 JPG_IMG="/tmp/slide_${RAND}.jpg"
 
-# prompt the user for their question
-USER_QUESTION=$(zenity --entry --title="Your Question" --text="What is your question about the image?")
+# prompt the user for their question default text: fill in the blanks.
+USER_QUESTION=$(zenity --entry --title="Your Question" --text="")
 
-PERSONA_PROMPT="You are a learning and subject-matter expert. Your task is to deeply understand the core principles given in the picture. Then, think like the experts in the field, such as a physics professor or senior software engineer depending on the subject. Then explain the concepts clearly. If applicable, provide some toy examples to make the explanation more understandable. Then, create high-quality, modular Anki cards that promote long-term understanding. Also, include relevant examples or explanations on the back of the card if applicable. Note that the provided content is lecture content and it will be asked in the exam. So be careful about not missing important information. Your long-term goal is to help me master the subject through spaced repetition. If there are mathematical equations, write them in LaTeX format. If there are code snippets, write them in a code block."
+PERSONA_PROMPT="Your job is to explain the key concepts in the image provided by using a good language and examples. Note that the provided image will be asked in master level deep learning exams. You should provide the answer in a way that it can be helpful in the exam."
 
 FULL_PROMPT="${USER_QUESTION}\n\n${PERSONA_PROMPT}"
 
@@ -84,3 +84,66 @@ cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt
 # go back to default mode
 i3-msg mode "default" > /dev/null 2>&1
 
+RESPONSE_TEXT=$(cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt)
+
+CONVO_HISTORY="USER: ${USER_QUESTION}\n\nASSISTANT: ${RESPONSE_TEXT}"
+
+echo
+echo "You can now ask follow-up questions in the terminal (type 'exit' to quit):"
+while true; do
+    echo
+    read -p "> " FOLLOW_UP
+    [[ "$FOLLOW_UP" == "exit" ]] && break
+
+    # append follow-up to the chat history
+    CONVO_HISTORY="${CONVO_HISTORY}\n\nUSER: ${FOLLOW_UP}"
+
+    # build full prompt without re-sending the image
+    FULL_FOLLOWUP_PROMPT="${CONVO_HISTORY}\n\nASSISTANT:"
+
+    # prepare json payload
+    JSON_PAYLOAD=$(jq -n --arg prompt "$FULL_FOLLOWUP_PROMPT" '{
+      model: "gpt-4.1-nano",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: $prompt
+            }
+          ]
+        }
+      ],
+      text: {
+        format: {
+          type: "text"
+        }
+      },
+      max_output_tokens: 1024
+    }')
+
+    # send requests
+    RESPONSE=$(curl -s https://api.openai.com/v1/responses \
+      -H "Authorization: Bearer $API_KEY" \
+      -H "Content-Type: application/json" \
+      -d "$JSON_PAYLOAD")
+
+    # extract the response
+    if echo "$RESPONSE" | jq -e '.output' > /dev/null; then
+      ASSISTANT_REPLY=$(echo "$RESPONSE" | jq -r '
+          .output[]
+          | select(.type == "message")
+          | .content[]
+          | select(.type == "output_text")
+          | .text')
+    else
+      echo "❌ Error: Unexpected or null response from API:"
+      echo "$RESPONSE"
+      break
+    fi
+
+    echo -e "\nASSISTANT: $ASSISTANT_REPLY"
+
+    CONVO_HISTORY="${CONVO_HISTORY}\n\nASSISTANT: ${ASSISTANT_REPLY}"
+done
