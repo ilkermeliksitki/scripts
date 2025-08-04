@@ -11,7 +11,7 @@ USER_QUESTION=$(zenity --entry --title="Your Question" --text="")
 
 PERSONA_PROMPT="Your job is to explain the key concepts in the image provided by using a good language and examples. Note that the provided image will be asked in master level deep learning exams. You should provide the answer in a way that it can be helpful in the exam."
 
-FULL_PROMPT="${USER_QUESTION}\n\n${PERSONA_PROMPT}"
+FULL_PROMPT=$(printf "%s\n\n%s" "$USER_QUESTION" "$PERSONA_PROMPT")
 
 # capture screenshot
 flameshot gui -p "$PNG_IMG" > /dev/null 2>&1
@@ -81,10 +81,10 @@ i3-msg mode "default" > /dev/null 2>&1
 
 RESPONSE_TEXT=$(cat /home/melik/Documents/projects/scripts/photo-to-anki/raw_output.txt)
 
-# print the response to the terminal
-echo -e "\nASSISTANT: $RESPONSE_TEXT"
+# print the response to the terminal by using printf
+printf "\nASSISTANT: %s\n" "$RESPONSE_TEXT"
 
-CONVO_HISTORY="USER: ${USER_QUESTION}\n\nASSISTANT: ${RESPONSE_TEXT}"
+CONVO_HISTORY=$(printf "USER: %s\n\nASSISTANT: %s" "$USER_QUESTION" "$RESPONSE_TEXT")
 
 #TODO change the file location later to tmp folder
 HISTORY_FILE="/home/melik/Documents/projects/scripts/photo-to-anki/convo_history.txt"
@@ -97,7 +97,8 @@ while true; do
     [[ "$FOLLOW_UP" == "exit" ]] && break
 
     # append the follow-up question to the conversation history
-    CONVO_HISTORY="${CONVO_HISTORY}\n\nUSER: ${FOLLOW_UP}"
+    CONVO_HISTORY=$(printf "%s\n\nUSER: %s" "$CONVO_HISTORY" "$FOLLOW_UP")
+
     
     # save the conversation history to a file
     echo -e "$CONVO_HISTORY" > "$HISTORY_FILE"
@@ -106,7 +107,7 @@ while true; do
     CLIPPED_HISTORY=$(./clip_history.sh "$HISTORY_FILE" 4)
 
     # build full prompt without re-sending the image
-    FULL_FOLLOWUP_PROMPT="${CONVO_HISTORY}\n\nASSISTANT:"
+    FULL_FOLLOWUP_PROMPT=$(printf "%s\n\nASSISTANT:" "$CLIPPED_HISTORY")
 
     # prepare json payload
     JSON_PAYLOAD=$(jq -n --arg prompt "$FULL_FOLLOWUP_PROMPT" '{
@@ -152,5 +153,5 @@ while true; do
 
     echo -e "\nASSISTANT: $ASSISTANT_REPLY"
 
-    CONVO_HISTORY="${CONVO_HISTORY}\n\nASSISTANT: ${ASSISTANT_REPLY}"
+    CONVO_HISTORY=$(printf "%s\n\nASSISTANT: %s" "$CONVO_HISTORY" "$ASSISTANT_REPLY")
 done
