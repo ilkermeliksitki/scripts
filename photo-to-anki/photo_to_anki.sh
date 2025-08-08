@@ -1,6 +1,8 @@
 #!/bin/bash
 
 API_KEY=$OPENAI_API_KEY
+MODEL="gpt-5-nano"  # gpt-5-nano input: $0.05 cached-inp: $0.005 output: $0.40
+MOT=5000
 
 RAND=$(head /dev/urandom | tr -dc a-z0-9 | head -c6)
 PNG_IMG="/tmp/slide_${RAND}.png"
@@ -43,7 +45,7 @@ RESPONSE=$(curl -s https://api.openai.com/v1/responses \
   -H "Content-Type: application/json" \
   -d @- <<EOF
 {
-  "model": "gpt-4.1-nano",
+  "model": "$MODEL",
   "input": [
     {
       "role": "user",
@@ -64,10 +66,12 @@ RESPONSE=$(curl -s https://api.openai.com/v1/responses \
       "type": "text"
     }
   },
-  "max_output_tokens": 2048
+  "max_output_tokens": $MOT,
 }
 EOF
 )
+
+echo $RESPONSE
 
 echo "$RESPONSE" | jq -r '
   .output[]
@@ -110,8 +114,8 @@ while true; do
     FULL_FOLLOWUP_PROMPT=$(printf "%s\n\nASSISTANT:" "$CLIPPED_HISTORY")
 
     # prepare json payload
-    JSON_PAYLOAD=$(jq -n --arg prompt "$FULL_FOLLOWUP_PROMPT" '{
-      model: "gpt-4.1-nano",
+    JSON_PAYLOAD=$(jq -n --arg prompt "$FULL_FOLLOWUP_PROMPT" --arg model "$MODEL" '{
+      model: $model,
       input: [
         {
           role: "user",
@@ -128,7 +132,7 @@ while true; do
           type: "text"
         }
       },
-      max_output_tokens: 2048,
+      max_output_tokens: $MOT
     }')
 
     # send requests
