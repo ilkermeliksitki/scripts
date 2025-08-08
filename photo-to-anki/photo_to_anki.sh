@@ -66,7 +66,7 @@ RESPONSE=$(curl -s https://api.openai.com/v1/responses \
       "type": "text"
     }
   },
-  "max_output_tokens": $MOT,
+  "max_output_tokens": $MOT
 }
 EOF
 )
