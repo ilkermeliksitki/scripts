@@ -11,7 +11,7 @@ JPG_IMG="/tmp/slide_${RAND}.jpg"
 # prompt the user for their question default text: fill in the blanks.
 USER_QUESTION=$(zenity --entry --title="Your Question" --text="")
 
-PERSONA_PROMPT="Your job is to explain the key concepts in the image provided by using a good language and examples. Note that the provided image will be asked in master level deep learning exams. You should provide the answer in a way that it can be helpful in the exam."
+PERSONA_PROMPT="Your job is to explain the key concepts in the provided image by using a easy-to-understand language and and toy examples if applicable. Note that the provided image will be asked in master level image processing exam. You should provide the answer in a way that it can be helpful in the exam."
 
 FULL_PROMPT=$(printf "%s\n\n%s" "$USER_QUESTION" "$PERSONA_PROMPT")
 
@@ -114,26 +114,32 @@ while true; do
     FULL_FOLLOWUP_PROMPT=$(printf "%s\n\nASSISTANT:" "$CLIPPED_HISTORY")
 
     # prepare json payload
-    JSON_PAYLOAD=$(jq -n --arg prompt "$FULL_FOLLOWUP_PROMPT" --arg model "$MODEL" '{
-      model: $model,
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: $prompt
-            }
-          ]
-        }
-      ],
-      text: {
-        format: {
-          type: "text"
-        }
-      },
-      max_output_tokens: $MOT
-    }')
+    JSON_PAYLOAD=$(
+        jq -n \
+            --arg prompt "$FULL_FOLLOWUP_PROMPT" \
+            --arg model "$MODEL" \
+            --argjson mot "$MOT" \
+            '{
+              model: $model,
+              input: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "input_text",
+                      text: $prompt
+                    }
+                  ]
+                }
+              ],
+              text: {
+                format: {
+                  type: "text"
+                }
+              },
+              max_output_tokens: $mot
+             }'
+    )
 
     # send requests
     RESPONSE=$(curl -s https://api.openai.com/v1/responses \
