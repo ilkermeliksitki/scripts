@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # upload the configuration variables
-SCRIPT_DIR=$(dirname "$(realpath "$0")")
 source "$SCRIPT_DIR/../utils/config.sh"
 
 PERSONAL_PROMPT="Your name is Minerva, an helpful assistant. Your job is to answer the user with a clear and easy-to-understand language. Also, provide toy examples if relevant."
@@ -10,6 +9,14 @@ USER_INPUT="$1"
 
 FULL_PROMPT=$(printf "USER QUESTION: %s\n\nYOUR PERSONA: %s" "$USER_INPUT" "$PERSONAL_PROMPT")
 
+# save the message to the database
+python3 "$SCRIPT_DIR/db/save_message.py" \
+    "$SESSION_ID" \
+    "user" \
+    "$FULL_PROMPT" \
+    "text"
+
+exit 1
 # create the json payload
 JSON_PAYLOAD=$(
     jq -n \
