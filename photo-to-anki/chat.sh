@@ -11,19 +11,27 @@ echo "Type /h for help with available commands."
 while true; do
     read -p "> " USER_INPUT
 
+    if [[ -z "$USER_INPUT" ]]; then
+        continue
+    fi
+
     if [[ "$USER_INPUT" == "/q" ]]; then
         echo "Goodbye!"
         break
     fi
 
-    COMMAND_FILE=$(bash "$UTILS_DIR/check_command_file.sh" "$USER_INPUT")
-    if [[ -f "$COMMAND_FILE" ]]; then
-        # execute the command
-        bash "$COMMAND_FILE"
+    # if it starts with /, treat it as a command
+    if [[ "$USER_INPUT" == /* ]]; then
+        COMMAND_FILE=$(bash "$UTILS_DIR/check_command_file.sh" "$USER_INPUT")
+        if [[ -f "$COMMAND_FILE" ]]; then
+            # execute the command
+            bash "$COMMAND_FILE"
+        else
+            echo "Command not found. Type /h for help."
+        fi
     else
-        echo "Command not found. Type /h for help."
+        # treat it as a message
+        bash "$UTILS_DIR/send_plain_message.sh" "$USER_INPUT"
     fi
 
 done
-
-
