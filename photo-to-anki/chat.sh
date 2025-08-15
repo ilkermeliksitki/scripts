@@ -3,10 +3,12 @@
 # configurations
 SCRIPT_DIR=$(dirname "$0")
 export SCRIPT_DIR="$SCRIPT_DIR"
+export DATABASE_PATH="$SCRIPT_DIR/db/database.db"
 
 COMMANDS_DIR="$SCRIPT_DIR/commands"
 UTILS_DIR="$SCRIPT_DIR/utils"
 export SESSION_ID=$(python3 db/create_new_session.py)
+echo "Session ID: $SESSION_ID"
 
 echo "Welcome 😊"
 echo "Type /h for help with available commands."

@@ -1,15 +1,19 @@
+import os
 import sys
 import sqlite3
 from datetime import datetime
 
+DATABASE_PATH = os.getenv("DATABASE_PATH")
+
 def save_message(session_id, sender, content, message_type="text"):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DATABASE_PATH)
     c = conn.cursor()
 
+    current_time = datetime.timestamp(datetime.now())
     c.execute("""
     INSERT INTO messages (session_id, sender, content, type, timestamp)
     VALUES (?, ?, ?, ?, ?)
-    """, (session_id, sender, content, message_type, datetime.now()))
+    """, (session_id, sender, content, message_type, current_time))
 
     conn.commit()
     conn.close()

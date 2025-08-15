@@ -1,6 +1,5 @@
 #!/bin/bash
 
-DATABASE_PATH="$SCRIPT_DIR/db/database.db"
 SCHEMA_PATH="$SCRIPT_DIR/db/schema.sql"
 
 # if not exists, create the database
