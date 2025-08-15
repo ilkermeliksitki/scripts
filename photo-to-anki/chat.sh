@@ -6,7 +6,7 @@ export SCRIPT_DIR="$SCRIPT_DIR"
 
 COMMANDS_DIR="$SCRIPT_DIR/commands"
 UTILS_DIR="$SCRIPT_DIR/utils"
-SESSION_ID=$(python3 db/create_new_session.py)
+export SESSION_ID=$(python3 db/create_new_session.py)
 
 echo "Welcome 😊"
 echo "Type /h for help with available commands."
