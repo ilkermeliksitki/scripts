@@ -6,6 +6,7 @@ from pathlib import Path
 from db.create_new_session import create_new_session
 from db.summary.save_summary import save_summary
 from services.summarization import summarize_most_recent
+from utils.conversation.format_recent_messages import format_recent_messages
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 DATABASE_PATH = SCRIPT_DIR / "db" / "database.db"
@@ -49,10 +50,12 @@ while True:
             else:
                 print(f"Command not found. Type /h for help.")
         else:
-            subprocess.run(["bash", str(UTILS_DIR / "send_plain_message.sh"), user_input])
+            recent_fmt_messages = format_recent_messages(SESSION_ID)
+            user_input_with_context = f"{recent_fmt_messages}\nUser: {user_input}"
+            subprocess.run(["bash", str(UTILS_DIR / "send_plain_message.sh"), user_input_with_context])
 
-        summary = summarize_most_recent()
-        save_summary(summary)
+        #summary = summarize_most_recent()
+        #save_summary(summary)
 
 
     except subprocess.CalledProcessError as e:
