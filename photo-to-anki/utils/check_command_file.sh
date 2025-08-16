@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 COMMANDS_DIR="$SCRIPT_DIR/commands"
 
 declare -A COMMAND_MAP
-COMMAND_MAP["/i"]="image_input.sh"     # Map `/i` to `input_image.sh`
+COMMAND_MAP["/i"]="image_input.py"     # Map `/i` to python image input
 COMMAND_MAP["/a"]="anki.sh"         # Map `/a` to `anki.sh`
 COMMAND_MAP["/h"]="help.sh"         # Map `/h` to `help.sh`
 
@@ -23,4 +23,3 @@ if [[ -n "${COMMAND_MAP[$USER_INPUT]}" ]]; then
 else
     exit 1
 fi
-

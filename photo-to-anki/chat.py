@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import subprocess
 from pathlib import Path
 from db.create_new_session import create_new_session
@@ -47,7 +48,11 @@ while True:
                 capture_output=True, text=True).stdout.strip()
 
             if Path(command_file).is_file():
-                subprocess.run(["bash", command_file], check=True)
+                # execute handlers according to their file type
+                if command_file.endswith('.py'):
+                    subprocess.run([sys.executable, command_file], check=True)
+                else:
+                    subprocess.run(["bash", command_file], check=True)
             else:
                 print(f"Command not found. Type /h for help.")
         else:
