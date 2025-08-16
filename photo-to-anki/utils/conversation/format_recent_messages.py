@@ -6,11 +6,11 @@ from utils.conversation.fetch_recent_messages import get_most_recent_messages
 def format_recent_messages(session_id=None, limit=3):
     if session_id is None:
         session_id = os.getenv("SESSION_ID")
-    if session_id is None:
-        return ""
 
     messages = get_most_recent_messages(session_id, limit=limit)
-    #messages = list(reversed(messages))
+    if not messages:
+        return ""
+    messages = list(reversed(messages)) # so that the most recent message is at the end (as in the chat but clipped)
 
     parts = []
     for sender, content, message_type, timestamp in messages:
