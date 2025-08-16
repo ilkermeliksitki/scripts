@@ -1,6 +1,7 @@
 import os
 import sys
 from utils.conversation.fetch_recent_messages import get_most_recent_messages
+from db.summary.get_summary import fetch_summary
 
 
 def format_recent_messages(session_id=None, limit=3):
@@ -13,6 +14,10 @@ def format_recent_messages(session_id=None, limit=3):
     messages = list(reversed(messages)) # so that the most recent message is at the end (as in the chat but clipped)
 
     parts = []
+    # include running summary (if any) so clipped context isn't entirely lost
+    running_summary = fetch_summary(session_id)
+    if running_summary:
+        parts.append(f"Running summary:\n{running_summary}\n---")
     for sender, content, message_type, timestamp in messages:
         parts.append(f"Sender: {sender}\nContent: {content}\nType: {message_type}\n---")
 
@@ -31,4 +36,3 @@ if __name__ == "__main__":
             pass
 
     print(format_recent_messages(sid, lim))
-

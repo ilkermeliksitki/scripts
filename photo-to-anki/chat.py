@@ -6,6 +6,7 @@ from pathlib import Path
 from db.create_new_session import create_new_session
 from db.summary.save_summary import save_summary
 from services.summarization import summarize_most_recent
+from utils.conversation.count_messages import count_messages
 from utils.conversation.format_recent_messages import format_recent_messages
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -54,8 +55,16 @@ while True:
             user_input_with_context = f"{recent_fmt_messages}\nUser: {user_input}"
             subprocess.run(["bash", str(UTILS_DIR / "send_plain_message.sh"), user_input_with_context])
 
-        #summary = summarize_most_recent()
-        #save_summary(summary)
+            # after sending a message, update the running summary every N messages
+            try:
+                n = int(os.getenv("SUMMARY_EVERY_N", "3"))
+                total = count_messages(SESSION_ID)
+                if total > 0 and total % n == 0:
+                    new_summary = summarize_most_recent(limit=n)
+                    if new_summary:
+                        save_summary(new_summary)
+            except Exception as e:
+                print(f"Warning: failed to update running summary: {e}")
 
 
     except subprocess.CalledProcessError as e:
@@ -68,9 +77,3 @@ while True:
     except EOFError:
         print("\nGoodbye! 👋")
         break
-
-
-
-
-
-
