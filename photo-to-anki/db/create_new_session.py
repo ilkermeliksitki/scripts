@@ -2,15 +2,12 @@ import os
 import subprocess
 import sqlite3
 
-DATABASE_PATH = os.getenv("SCRIPT_DIR") + "/db/database.db"
-INIT_DATABASE_SCRIPT = os.getenv("SCRIPT_DIR") + "/db/init_database.sh"
+def create_new_session(db_path, init_script):
 
-def create_new_session():
+    if not os.path.exists(db_path):
+        subprocess.run(["bash", init_script])
 
-    if not os.path.exists(DATABASE_PATH):
-        subprocess.run(["bash", INIT_DATABASE_SCRIPT])
-
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     
     c.execute("INSERT INTO sessions (summary) VALUES (NULL)")

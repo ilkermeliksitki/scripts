@@ -5,6 +5,9 @@ SCRIPT_DIR=$(dirname "$0")
 export SCRIPT_DIR="$SCRIPT_DIR"
 export DATABASE_PATH="$SCRIPT_DIR/db/database.db"
 
+# add script directory to python path
+export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+
 COMMANDS_DIR="$SCRIPT_DIR/commands"
 UTILS_DIR="$SCRIPT_DIR/utils"
 export SESSION_ID=$(python3 db/create_new_session.py)
@@ -35,8 +38,11 @@ while true; do
             echo "Command not found. Type /h for help."
         fi
     else
-        # treat it as a message
+        # treat it as a regular message
         bash "$UTILS_DIR/send_plain_message.sh" "$USER_INPUT"
     fi
 
+    summary=$(python3 db/summary/running_summary_per_session.py)
+    printf "\nSummary:\n%s\n" "$summary"
+    python3 db/summary/save_summary.py "$summary"
 done
