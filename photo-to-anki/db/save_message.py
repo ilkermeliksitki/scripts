@@ -51,9 +51,9 @@ def save_message(session_id, sender, content, message_type="text", image_descrip
                 image_id = None
 
             if image_prompt:
-                content = f"image prompt: {image_prompt}, image description: {image_description or 'No description provided'}"
+                content = image_prompt
             else:
-                content = f"image description: {image_description or 'No description provided'}"
+                content = "no prompt provided for the image by the user"
         except Exception as e:
             print(f"Error processing image content: {e}")
             content = None
