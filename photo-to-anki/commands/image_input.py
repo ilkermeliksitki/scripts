@@ -57,7 +57,7 @@ def main():
 
     # capture screenshot
     rand = os.urandom(6).hex()
-    png_path = f"/tmp/slide_{rand}.png"
+    png_path = f"/tmp/minerva_{rand}.png"
 
     print("Capture an image. Close/confirm the capture to continue.")
 
@@ -141,8 +141,8 @@ def main():
             if texts:
                 # return the first line as a concise description
                 return " ".join(texts).strip()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"❌ Error: failed to generate image description: {e}")
 
         return ""
 
@@ -203,11 +203,15 @@ def main():
 def save_message(session_id, sender, content, message_type="text", image_description=None, image_prompt=None):
     # use the existing db/save_message.py script to preserve DB behavior
     script = SCRIPT_DIR / "db" / "save_message.py"
-    args = [sys.executable, str(script), str(session_id or ""), sender, content, message_type]
-    if image_description:
-        args.append(image_description)
-    if image_prompt:
-        args.append(image_prompt)
+    args = [
+        sys.executable,        str(script),
+        "--session-id",        str(session_id or ""),
+        "--sender",            sender,
+        "--content",           content,
+        "--message-type",      message_type,
+        "--image-description", image_description or "",
+        "--image-prompt",      image_prompt or "",
+    ]
     subprocess.run(args)
 
 
