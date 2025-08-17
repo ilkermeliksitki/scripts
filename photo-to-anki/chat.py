@@ -15,6 +15,7 @@ DATABASE_PATH = SCRIPT_DIR / "db" / "database.db"
 DATABASE_INIT_SCRIPT = SCRIPT_DIR / "db" / "init_database.sh"
 COMMANDS_DIR = SCRIPT_DIR / "commands"
 UTILS_DIR = SCRIPT_DIR / "utils"
+IMAGES_DIR = SCRIPT_DIR / "db" / "images"
 
 os.environ["SCRIPT_DIR"] = str(SCRIPT_DIR)
 os.environ["DATABASE_PATH"] = str(DATABASE_PATH)

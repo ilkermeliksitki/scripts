@@ -98,8 +98,58 @@ def main():
     # save user text message to the DB (re-use db/save_message.py)
     save_message(session_id, "user", full_prompt, "text")
 
-    # save image message to the DB
-    save_message(session_id, "user", data_url, "image")
+    # generate a concise image description automatically via the Responses API
+    def generate_image_description(data_url, api_key, model):
+        url = "https://api.openai.com/v1/responses"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+
+        # ask the model to create a short caption/description for the image
+        prompt_text = (
+            "Provide a concise (one- or two-sentence) neutral description of the provided image."
+            "Keep it under 40 words and suitable as a short caption."
+        )
+
+        payload = {
+            "model": model,
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_image", "image_url": data_url},
+                        {"type": "input_text", "text": prompt_text},
+                    ],
+                }
+            ],
+            "text": {"format": {"type": "text"}},
+            "max_output_tokens": 60,
+        }
+
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=15)
+            r.raise_for_status()
+            j = r.json()
+            output = j.get("output", [])
+            texts = []
+            for item in output:
+                if item.get("type") == "message":
+                    for c in item.get("content", []):
+                        if c.get("type") == "output_text" and c.get("text"):
+                            texts.append(c.get("text"))
+            if texts:
+                # return the first line as a concise description
+                return " ".join(texts).strip()
+        except Exception:
+            pass
+
+        return ""
+
+    image_description = generate_image_description(data_url, OPENAI_API_KEY, os.getenv("IMAGE_DESC_MODEL", MODEL))
+
+    # save image message to the DB (pass description and the user's prompt)
+    save_message(session_id, "user", data_url, "image", image_description, user_prompt)
 
     payload = {
         "model": MODEL,
@@ -150,16 +200,17 @@ def main():
     save_message(session_id, "minerva", response_text, "text")
 
 
-def save_message(session_id, sender, content, message_type="text"):
+def save_message(session_id, sender, content, message_type="text", image_description=None, image_prompt=None):
     # use the existing db/save_message.py script to preserve DB behavior
     script = SCRIPT_DIR / "db" / "save_message.py"
-    if not script.exists():
-        print("Warning: save_message.py not found; skipping DB save.")
-        return
-    subprocess.run([sys.executable, str(script), str(session_id or ""), sender, content, message_type])
+    args = [sys.executable, str(script), str(session_id or ""), sender, content, message_type]
+    if image_description:
+        args.append(image_description)
+    if image_prompt:
+        args.append(image_prompt)
+    subprocess.run(args)
 
 
 
 if __name__ == "__main__":
     main()
-
