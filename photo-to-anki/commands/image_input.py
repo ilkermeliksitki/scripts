@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-image input command
-
-behavior:
-- capture a screenshot using `flameshot gui`
-- save image to clipboard
-- build a context-aware prompt by including recent messages and a persona.
-- send `input_text` + `input_image` to the OpenAI Responses API.
-- save user and assistant messages to the local DB
-"""
 
 import os
 import sys
@@ -23,7 +13,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(os.environ.get("SCRIPT_DIR"))
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from utils.conversation.format_recent_messages import format_recent_messages
+from utils.conversation.get_most_recent_messages import get_most_recent_messages
+from db.save_message import save_message
 
 
 def fatal(msg, code=1):
@@ -44,7 +35,7 @@ def shutil_which(cmd):
         return None
 
 
-def main():
+def image_input():
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     if not OPENAI_API_KEY:
         fatal("Error: OPENAI_API_KEY is not set. Please set it in your environment.")
@@ -53,7 +44,7 @@ def main():
 
     # build context
     session_id = os.getenv("SESSION_ID")
-    recent = format_recent_messages(session_id)
+    api_inputs = get_most_recent_messages(session_id)
 
     # capture screenshot
     rand = os.urandom(6).hex()
@@ -84,6 +75,7 @@ def main():
     # prompt
     try:
         user_prompt = input("prompt about image: ")
+        user_prompt = user_prompt.strip()
     except EOFError:
         fatal("No prompt provided; exiting.")
 
@@ -93,81 +85,33 @@ def main():
         " master-level image processing exam and answer in an exam-helpful style."
     )
 
-    full_prompt = f"{recent}\nUser: {user_prompt}\n\nYOUR PERSONA: {persona}"
+    # save user prompt for the image to the messages table in DB
+    save_message(session_id, "user", text_content=user_prompt)
 
-    # save user text message to the DB (re-use db/save_message.py)
-    save_message(session_id, "user", full_prompt, "text")
+    # save image to the images table in DB
+    save_message(session_id, "user", image_bytes=img_bytes)
 
-    # generate a concise image description automatically via the Responses API
-    def generate_image_description(data_url, api_key, model):
-        url = "https://api.openai.com/v1/responses"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
-
-        # ask the model to create a short caption/description for the image
-        prompt_text = (
-            "Provide a concise (one- or two-sentence) neutral description of the provided image."
-            "Keep it under 40 words and suitable as a short caption."
-        )
-
-        payload = {
-            "model": model,
-            "input": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "input_image", "image_url": data_url},
-                        {"type": "input_text", "text": prompt_text},
-                    ],
-                }
+    # combine context messages (List[Dict]) and user prompt with image
+    payload_input = api_inputs + [
+        {
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": user_prompt},
+                {"type": "input_image", "image_url": data_url},
             ],
-            "text": {"format": {"type": "text"}},
-            "max_output_tokens": 3000,
         }
-
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=15)
-            r.raise_for_status()
-            j = r.json()
-            output = j.get("output", [])
-            texts = []
-            for item in output:
-                if item.get("type") == "message":
-                    for c in item.get("content", []):
-                        if c.get("type") == "output_text" and c.get("text"):
-                            texts.append(c.get("text"))
-            if texts:
-                # return the first line as a concise description
-                return " ".join(texts).strip()
-        except Exception as e:
-            print(f"❌ Error: failed to generate image description: {e}")
-
-        return ""
-
-    image_description = generate_image_description(data_url, OPENAI_API_KEY, os.getenv("IMAGE_DESC_MODEL", MODEL))
-
-    # save image message to the DB (pass description and the user's prompt)
-    save_message(session_id, "user", data_url, "image", image_description, user_prompt)
+    ]
 
     payload = {
         "model": MODEL,
-        "input": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": full_prompt},
-                    {"type": "input_image", "image_url": data_url},
-                ],
-            }
-        ],
+        "input": payload_input,
         "text": {"format": {"type": "text"}},
         "max_output_tokens": MAX_OUTPUT_TOKENS,
     }
 
     print("image is sending to the server...")
 
+    # TODO: this appears frequently, consider creating a utility function for it
     url = "https://api.openai.com/v1/responses"
     headers = {
         "Content-Type": "application/json",
@@ -175,8 +119,8 @@ def main():
     }
 
     # send request to OpenAI API
+    response = requests.post(url, headers=headers, json=payload)
     try:
-        response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
         resp_json = response.json()
     except requests.exceptions.RequestException as e:
@@ -197,24 +141,8 @@ def main():
     print(f"\nminerva: {response_text}\n")
 
     # save assistant response
-    save_message(session_id, "minerva", response_text, "text")
-
-
-def save_message(session_id, sender, content, message_type="text", image_description=None, image_prompt=None):
-    # use the existing db/save_message.py script to preserve DB behavior
-    script = SCRIPT_DIR / "db" / "save_message.py"
-    args = [
-        sys.executable,        str(script),
-        "--session-id",        str(session_id or ""),
-        "--sender",            sender,
-        "--content",           content,
-        "--message-type",      message_type,
-        "--image-description", image_description or "",
-        "--image-prompt",      image_prompt or "",
-    ]
-    subprocess.run(args)
-
+    save_message(session_id, "minerva", text_content=response_text)
 
 
 if __name__ == "__main__":
-    main()
+    image_input()

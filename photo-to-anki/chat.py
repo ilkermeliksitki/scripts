@@ -9,6 +9,7 @@ from db.summary.save_summary import save_summary
 from services.summarization import summarize_most_recent
 from utils.conversation.count_messages import count_messages
 from utils.conversation.format_recent_messages import format_recent_messages
+from utils.send_plain_message import send_plain_message
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 DATABASE_PATH = SCRIPT_DIR / "db" / "database.db"
@@ -58,21 +59,7 @@ while True:
             else:
                 print(f"Command not found. Type /h for help.")
         else:
-            recent_fmt_messages = format_recent_messages(SESSION_ID)
-            user_input_with_context = f"{recent_fmt_messages}\nUser: {user_input}"
-            subprocess.run(["bash", str(UTILS_DIR / "send_plain_message.sh"), user_input_with_context])
-
-            # after sending a message, update the running summary every N messages
-            try:
-                n = int(os.getenv("SUMMARY_EVERY_N", "3"))
-                total = count_messages(SESSION_ID)
-                if total > 0 and total % n == 0:
-                    new_summary = summarize_most_recent(limit=n)
-                    if new_summary:
-                        save_summary(new_summary)
-            except Exception as e:
-                print(f"Warning: failed to update running summary: {e}")
-
+            send_plain_message(user_input)
 
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
