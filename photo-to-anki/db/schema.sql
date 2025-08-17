@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS messages (
     session_id INTEGER,
     sender TEXT,
     content TEXT,
+    image_path TEXT,
+    image_description TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     type TEXT,
     FOREIGN KEY (session_id) REFERENCES sessions(id)
