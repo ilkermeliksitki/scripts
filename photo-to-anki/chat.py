@@ -5,10 +5,7 @@ import sys
 import subprocess
 from pathlib import Path
 from db.create_new_session import create_new_session
-from db.summary.save_summary import save_summary
-from services.summarization import summarize_most_recent
 from utils.conversation.count_messages import count_messages
-from utils.conversation.format_recent_messages import format_recent_messages
 from utils.send_plain_message import send_plain_message
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
