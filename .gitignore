@@ -2,5 +2,8 @@ aws-archive/icloud/venv/*
 *.mp4
 *.swp
 *.log
+*.db
 anki_csv/anki_items.csv
 anki_csv/words.csv
+*__pycache__*
+photo-to-anki/db/images

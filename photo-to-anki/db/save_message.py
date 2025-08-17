@@ -1,5 +1,4 @@
 import os
-import sys
 import sqlite3
 import base64
 from datetime import datetime
@@ -8,7 +7,6 @@ DATABASE_PATH = os.getenv("DATABASE_PATH")
 IMAGES_DIR = os.getenv("IMAGES_DIR")
 
 def _save_image_bytes(session_id, image_bytes, mime_type, timestamp):
-    # determine extension
     ext = "bin"
     if mime_type == "image/png":
         ext = "png"
@@ -45,7 +43,9 @@ def save_message(session_id, sender, content, message_type="text", image_descrip
                 content = f"image prompt: {image_prompt}, image description: {image_description or 'No description provided'}"
             else:
                 content = f"image description: {image_description or 'No description provided'}"
-        except Exception:
+        except Exception as e:
+            print(f"Error processing image content: {e}")
+            sys.exit(1)
             image_path = None
 
     c.execute("""
@@ -57,6 +57,7 @@ def save_message(session_id, sender, content, message_type="text", image_descrip
     conn.close()
 
 if __name__ == "__main__":
+    import sys
     if len(sys.argv) < 4:
         print("Usage: python save_message.py <session_id> <sender> <content> [<message_type>] [<image_description>]")
         sys.exit(1)

@@ -19,6 +19,7 @@ IMAGES_DIR = SCRIPT_DIR / "db" / "images"
 
 os.environ["SCRIPT_DIR"] = str(SCRIPT_DIR)
 os.environ["DATABASE_PATH"] = str(DATABASE_PATH)
+os.environ["IMAGES_DIR"] = str(IMAGES_DIR)
 
 SESSION_ID = create_new_session(DATABASE_PATH, DATABASE_INIT_SCRIPT)
 os.environ["SESSION_ID"] = str(SESSION_ID)
