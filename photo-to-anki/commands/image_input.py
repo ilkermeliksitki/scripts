@@ -62,7 +62,7 @@ def main():
     print("Capture an image. Close/confirm the capture to continue.")
 
     # give user time to prepare for closing the terminal window
-    sleep(3)
+    sleep(2)
 
     run(["flameshot", "gui", "-p", png_path])
     if not Path(png_path).is_file():
@@ -124,7 +124,7 @@ def main():
                 }
             ],
             "text": {"format": {"type": "text"}},
-            "max_output_tokens": 60,
+            "max_output_tokens": 3000,
         }
 
         try:
