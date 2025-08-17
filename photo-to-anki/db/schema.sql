@@ -12,16 +12,14 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT,
     image_id INTEGER,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    type TEXT,
-    FOREIGN KEY (session_id) REFERENCES sessions(id)
+    FOREIGN KEY (session_id) REFERENCES sessions(id),
+    FOREIGN KEY (image_id) REFERENCES images(id)
 );
 
 CREATE TABLE IF NOT EXISTS images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER,
     path TEXT,
-    description TEXT,
-    prompt TEXT,
     mime TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES sessions(id)
