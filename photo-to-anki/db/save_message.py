@@ -1,7 +1,9 @@
 import os
 import sqlite3
 import base64
+import sys
 from datetime import datetime
+import argparse
 
 DATABASE_PATH = os.getenv("DATABASE_PATH")
 IMAGES_DIR = os.getenv("IMAGES_DIR")
@@ -30,8 +32,7 @@ def save_message(session_id, sender, content, message_type="text", image_descrip
 
     current_time = datetime.timestamp(datetime.now())
 
-    image_path = None
-
+    image_id = None
     if message_type == "image":
         # expected format: data:<mime>;base64,<b64data>
         try:
@@ -39,34 +40,54 @@ def save_message(session_id, sender, content, message_type="text", image_descrip
             mime = header.split(";")[0].replace("data:", "")
             image_bytes = base64.b64decode(b64data)
             image_path = _save_image_bytes(session_id, image_bytes, mime, current_time)
+            try:
+                c.execute("""
+                INSERT INTO images (session_id, path, description, prompt, mime, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, (session_id, image_path, image_description, image_prompt, mime, current_time))
+                image_id = c.lastrowid
+            except Exception:
+                # if images table doesn't exist or insert fails, fall back to no image_id
+                image_id = None
+
             if image_prompt:
                 content = f"image prompt: {image_prompt}, image description: {image_description or 'No description provided'}"
             else:
                 content = f"image description: {image_description or 'No description provided'}"
         except Exception as e:
             print(f"Error processing image content: {e}")
-            sys.exit(1)
-            image_path = None
+            content = None
+            image_id = None
 
     c.execute("""
-    INSERT INTO messages (session_id, sender, content, type, timestamp, image_path, image_description)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (session_id, sender, content, message_type, current_time, image_path, image_description))
+    INSERT INTO messages (session_id, sender, content, type, timestamp, image_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (session_id, sender, content, message_type, current_time, image_id))
 
     conn.commit()
     conn.close()
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 4:
-        print("Usage: python save_message.py <session_id> <sender> <content> [<message_type>] [<image_description>]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Save a message to the local DB")
+    parser.add_argument("--session-id",        dest="session_id",        required=True)
+    parser.add_argument("--sender",            dest="sender",            required=True)
+    parser.add_argument("--content",           dest="content",           required=True)
+    parser.add_argument("--message-type",      dest="message_type",      default="text")
+    parser.add_argument("--image-description", dest="image_description", default=None)
+    parser.add_argument("--image-prompt",      dest="image_prompt",      default=None)
 
-    session_id = sys.argv[1]
-    sender = sys.argv[2]
-    content = sys.argv[3]
-    message_type = sys.argv[4] if len(sys.argv) > 4 else "text"
-    image_description = sys.argv[5] if len(sys.argv) > 5 else None
-    image_prompt = sys.argv[6] if len(sys.argv) > 6 else None
+    args = parser.parse_args()
+    session_id = args.session_id
+    sender = args.sender
+    content = args.content
+    message_type = args.message_type
+    image_description = args.image_description
+    image_prompt = args.image_prompt
+
+    # normalize empty strings to None
+    if image_description == "":
+        image_description = None
+    if image_prompt == "":
+        image_prompt = None
 
     save_message(session_id, sender, content, message_type, image_description, image_prompt)
