@@ -11,10 +11,10 @@ FULL_PROMPT=$(printf "USER QUESTION: %s\n\nYOUR PERSONA: %s" "$USER_INPUT" "$PER
 
 # save the message to the database
 python3 "$SCRIPT_DIR/db/save_message.py" \
-    "$SESSION_ID" \
-    "user" \
-    "$FULL_PROMPT" \
-    "text"
+    --session-id "$SESSION_ID" \
+    --sender "user" \
+    --content "$FULL_PROMPT" \
+    --message-type "text"
 
 # create the json payload
 JSON_PAYLOAD=$(
@@ -67,7 +67,7 @@ fi
 
 # save the response to the database
 python3 "$SCRIPT_DIR/db/save_message.py" \
-    "$SESSION_ID" \
-    "minerva" \
-    "$RESPONSE_TEXT" \
-    "text"
+    --session-id "$SESSION_ID" \
+    --sender "minerva" \
+    --content "$RESPONSE_TEXT" \
+    --message-type "text"
