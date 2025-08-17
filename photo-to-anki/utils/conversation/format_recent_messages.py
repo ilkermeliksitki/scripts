@@ -1,6 +1,6 @@
 import os
 import sys
-from utils.conversation.fetch_recent_messages import get_most_recent_messages
+from utils.conversation.get_most_recent_messages import get_most_recent_messages
 from db.summary.get_summary import fetch_summary
 
 
