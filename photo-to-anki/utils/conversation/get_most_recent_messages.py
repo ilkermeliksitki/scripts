@@ -65,8 +65,4 @@ def get_most_recent_messages(session_id, limit=5, db_path=None):
 
         api_input.append(entry)
 
-    # print for debugging
-    for i in api_input:
-        print(i)
-
     return api_input
