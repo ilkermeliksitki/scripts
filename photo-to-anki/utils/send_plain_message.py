@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 
 from utils.conversation.get_most_recent_messages import get_most_recent_messages
@@ -58,6 +59,7 @@ def send_plain_message(user_prompt=None):
         resp_json = response.json()
     except requests.exceptions.RequestException as e:
         fatal(f"❌ Error: failed to send request to OpenAI API: {e}")
+        return
         
     output = resp_json.get("output", [])
     texts = []
