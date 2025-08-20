@@ -62,7 +62,7 @@ def image_input():
     # copy to clipboard if possible (for practical use)
     if shutil_which("xclip"):
         try:
-            run(["xclip", "-selection", "clipboard", "-t", "text/plain", "-i", png_path])
+            run(["xclip", "-selection", "clipboard", "-t", "image/png", "-i", png_path])
         except Exception:
             pass
 
