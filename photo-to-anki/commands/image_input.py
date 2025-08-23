@@ -85,11 +85,8 @@ def image_input():
         " master-level image processing exam and answer in an exam-helpful style."
     )
 
-    # save user prompt for the image to the messages table in DB
-    save_message(session_id, "user", text_content=user_prompt)
-
-    # save image to the images table in DB
-    save_message(session_id, "user", image_bytes=img_bytes)
+    # save user prompt and image together so the prompt related to the image and message appears at the same "row"
+    save_message(session_id, "user", text_content=user_prompt, image_bytes=img_bytes)
 
     # combine context messages (List[Dict]) and user prompt with image
     payload_input = api_inputs + [
