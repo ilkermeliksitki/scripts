@@ -11,29 +11,30 @@ setup_kill_switch(){
     sudo iptables-save > /tmp/wg-safe-iptables-backup.rules
     
     # Flush existing rules in FORWARD and OUTPUT chains for clean setup
-    sudo iptables -P INPUT ACCEPT
+    sudo iptables -P INPUT   ACCEPT
     sudo iptables -P FORWARD DROP
-    sudo iptables -P OUTPUT DROP
+    sudo iptables -P OUTPUT  DROP
     
     # Allow loopback traffic
-    sudo iptables -A INPUT -i lo -j ACCEPT
+    sudo iptables -A INPUT  -i lo -j ACCEPT
     sudo iptables -A OUTPUT -o lo -j ACCEPT
     
     # Allow established and related connections
-    sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    sudo iptables -A INPUT  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     sudo iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     
     # Allow traffic through VPN interface when it exists
     if ip link show "$wg_interface" >/dev/null 2>&1; then
-        sudo iptables -A INPUT -i "$wg_interface" -j ACCEPT
+        echo "✅ Allowing traffic through VPN interface: $wg_interface"
+        sudo iptables -A INPUT  -i "$wg_interface" -j ACCEPT
         sudo iptables -A OUTPUT -o "$wg_interface" -j ACCEPT
     fi
     
     # Allow local network communication (optional, comment out for strict mode)
-    sudo iptables -A INPUT -s 192.168.0.0/16 -j ACCEPT
+    sudo iptables -A INPUT  -s 192.168.0.0/16 -j ACCEPT
     sudo iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
-    sudo iptables -A INPUT -s 10.0.0.0/8 -j ACCEPT
-    sudo iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
+    sudo iptables -A INPUT  -s 10.0.0.0/8     -j ACCEPT
+    sudo iptables -A OUTPUT -d 10.0.0.0/8     -j ACCEPT
     
     # Block all other traffic (kill switch active)
     # INPUT/OUTPUT default policies are already set to DROP above
@@ -52,9 +53,9 @@ restore_firewall(){
         rm -f /tmp/wg-safe-iptables-backup.rules
     else
         # Fallback: reset to default permissive rules
-        sudo iptables -P INPUT ACCEPT
+        sudo iptables -P INPUT   ACCEPT
         sudo iptables -P FORWARD ACCEPT
-        sudo iptables -P OUTPUT ACCEPT
+        sudo iptables -P OUTPUT  ACCEPT
         sudo iptables -F
     fi
     
@@ -67,28 +68,20 @@ monitor_vpn_connection(){
     local wg_profile="$1"
     local check_interval=5
     
-    echo "👁️  Starting VPN connection monitor for $wg_profile..."
+    echo "👁️ Starting VPN connection monitor for $wg_profile..."
     echo "📝 Kill switch will activate if VPN connection is lost"
-    echo "🛑 Press Ctrl+C to stop monitoring and restore firewall"
+    echo "🛑 Press Ctrl+C to stop monitoring"
     
     # Set up signal handlers for clean exit
-    trap 'echo ""; echo "🛑 Stopping monitor and restoring firewall..."; restore_firewall; exit 0' INT TERM
+    trap 'echo ""; echo "🛑 Stopping monitoring"; exit 0' INT TERM
     
     while true; do
         # Check if WireGuard interface exists and is up
         if sudo wg show "$wg_profile" >/dev/null 2>&1; then
             local interface=$(sudo wg show "$wg_profile" | head -1 | awk '{print $2}' | tr -d ':')
             if [ -n "$interface" ] && ip link show "$interface" >/dev/null 2>&1; then
-                local status=$(ip link show "$interface" | grep -o "state [A-Z]*" | awk '{print $2}')
-                if [ "$status" = "UP" ]; then
-                    # VPN is up - ensure kill switch allows VPN traffic
-                    if [ -f "$KILL_SWITCH_STATUS_FILE" ]; then
-                        # Update rules to allow traffic through current VPN interface
-                        sudo iptables -D OUTPUT -o "$interface" -j ACCEPT >/dev/null 2>&1
-                        sudo iptables -D INPUT -i "$interface" -j ACCEPT >/dev/null 2>&1
-                        sudo iptables -A OUTPUT -o "$interface" -j ACCEPT
-                        sudo iptables -A INPUT -i "$interface" -j ACCEPT
-                    fi
+                local flags=$(ip link show "$interface" | grep -o '<[^>]*>')
+                if echo "$flags" | grep -q "UP"; then
                     echo "$(date '+%H:%M:%S') ✅ VPN connection active ($interface)"
                 else
                     echo "$(date '+%H:%M:%S') ⚠️  VPN interface $interface is DOWN - traffic blocked by kill switch"
