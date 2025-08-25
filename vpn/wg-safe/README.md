@@ -28,10 +28,8 @@ sudo ./main.sh monitor <profile>
 ```
 This will:
 - Continuously check VPN connection status
-- Update firewall rules to allow traffic through active VPN interface
-- Block all traffic if VPN connection is lost
 - Display real-time connection status
-- Press Ctrl+C to stop monitoring and restore firewall
+- Press Ctrl+C to stop monitoring
 
 ### Disconnect VPN
 ```bash
