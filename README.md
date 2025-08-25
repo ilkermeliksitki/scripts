@@ -39,7 +39,33 @@ scripts/
 ├── ventilation/
 │   ├── window_close.sh              # Automates window closing.
 │   └── window_open.sh               # Automates window opening.
+├── vpn/
+│   └── wg-safe/
+│       ├── main.sh                  # Secure WireGuard VPN manager with kill switch
+│       └── README.md                # Documentation for VPN kill switch functionality
 ├── wallpaper/
 │   └── wallpaper-changer.sh         # Changes wallpapers randomly.
 └── youtube/
     └── youtube-cli.py               # Command-line tool for YouTube interactions.
+```
+
+## Key Scripts
+
+### VPN Kill Switch (`vpn/wg-safe/`)
+A secure WireGuard VPN manager with built-in kill switch functionality to prevent IP leaks when VPN connections drop unexpectedly.
+
+**Features:**
+- **Kill Switch Protection**: Automatically blocks all internet traffic when VPN connection is lost
+- **IPv6 Leak Prevention**: Disables IPv6 during VPN connection to prevent leaks  
+- **Connection Monitoring**: Continuously monitors VPN status and maintains firewall rules
+- **Emergency Recovery**: Manual firewall restore function
+
+**Usage:**
+```bash
+sudo vpn/wg-safe/main.sh up <profile>      # Connect with kill switch
+sudo vpn/wg-safe/main.sh monitor <profile> # Monitor connection status
+sudo vpn/wg-safe/main.sh down <profile>    # Disconnect safely
+sudo vpn/wg-safe/main.sh restore-firewall  # Emergency restore
+```
+
+See `vpn/wg-safe/README.md` for detailed documentation.
