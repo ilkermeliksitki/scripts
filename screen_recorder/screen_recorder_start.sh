@@ -9,6 +9,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# validate that the input is a positive number
+if [[ -n "$DURATION_MINUTES" ]]; then
+    # check if input is a valid positive number (integer only for bash arithmetic)
+    if ! [[ "$DURATION_MINUTES" =~ ^[0-9]+$ ]] || [[ "$DURATION_MINUTES" -eq 0 ]]; then
+        notify-send "Invalid input: '$DURATION_MINUTES' is not a valid positive number. Using default duration."
+        DURATION_MINUTES=""
+    fi
+fi
+
 # Get selected area
 eval "$(slop -f "W=%w H=%h X=%x Y=%y")"
 [ -z "$W" ] && notify-send "No area selected" && exit 1
