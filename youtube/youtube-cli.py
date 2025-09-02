@@ -82,40 +82,55 @@ try:
                 if not os.path.exists(music_folder):
                     os.makedirs(music_folder)
                 if args.save:
-                    command = (
-                        f'yt-dlp -x --audio-format mp3 '
-                        f'-o "{music_folder}/{title}.mp3" https://www.youtube.com/watch?v={video_id}'
-                    )
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "yt-dlp",
+                        "--extract-audio",
+                        "--audio-format", "mp3",
+                        "-o", f"{music_folder}/{title}.mp3",
+                        f"https://www.youtube.com/watch?v={video_id}",
+                    ]
+                    subprocess.run(command)
 
-                    command = f'mpv "{music_folder}/{title}.mp3"'
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "mpv",
+                        f"{music_folder}/{title}.mp3"
+                    ]
+                    subprocess.run(command)
                 else:
-                    command = (
-                        f'mpv --ytdl-format="bestaudio" https://www.youtube.com/watch?v={video_id}'
-                    )
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "mpv",
+                        "--ytdl-format='bestaudio'"
+                        f"https://www.youtube.com/watch?v={video_id}"
+                    ]
+                    subprocess.run(command)
 
             elif choice == 'v':
                 video_folder = os.path.expanduser('~/Videos/youtube')
                 if not os.path.exists(video_folder):
                     os.makedirs(video_folder)
                 if args.save:
-                    command = (
-                        f'yt-dlp -f "bestvideo[height<=540]+bestaudio" '
-                        f'--merge-output-format mp4 '
-                        f'-o "{video_folder}/{title}.mp4" https://www.youtube.com/watch?v={video_id}'
-                    )
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "yt-dlp",
+                        "-f", "bestvideo[height<=540]+bestaudio",
+                        "--merge-output-format", "mp4",
+                        "-o", f"{video_folder}/{title}.mp4",
+                        f"https://www.youtube.com/watch?v={video_id}",
+                    ]
+                    subprocess.run(command)
 
-                    command = f'mpv "{video_folder}/{title}.mp4"'
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "mpv",
+                        f"{video_folder}/{title}.mp4"
+                    ]
+                    subprocess.run(command)
 
                 else:
-                    command = (
-                        f'mpv --ytdl-format="bv[height<=540]+ba" https://www.youtube.com/watch?v={video_id}'
-                    )
-                    subprocess.run(command, shell=True)
+                    command = [
+                        "mpv",
+                        '--ytdl-format="bv[height<=540]+ba"',
+                        "https://www.youtube.com/watch?v={video_id}"
+                    ]
+                    subprocess.run(command)
             else:
                 continue
         print('\n')
