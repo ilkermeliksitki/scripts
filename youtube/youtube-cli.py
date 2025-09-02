@@ -20,8 +20,9 @@ def sanitize_title(title):
 
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
-parser.add_argument('query', type=str, help='The query to search in youtube.')
+parser.add_argument('query', type=str, help='the query to search in youtube.')
 parser.add_argument('-s', '--save', action='store_true', help='save the content')
+parser.add_argument('-r', '--resolution', type=str, default='540', help='maximum video resolution (default: 540)')
 
 # parse the arguments
 args = parser.parse_args()
@@ -99,19 +100,20 @@ try:
                 else:
                     command = [
                         "mpv",
-                        "--ytdl-format='bestaudio'",
+                        "--ytdl-format=bestaudio",
                         f"https://www.youtube.com/watch?v={video_id}"
                     ]
                     subprocess.run(command)
 
             elif choice == 'v':
+                resolution = args.resolution
                 video_folder = os.path.expanduser('~/Videos/youtube')
                 if not os.path.exists(video_folder):
                     os.makedirs(video_folder)
                 if args.save:
                     command = [
                         "yt-dlp",
-                        "-f", "bestvideo[height<=540]+bestaudio",
+                        "-f", f"bestvideo[height<={resolution}]+bestaudio",
                         "--merge-output-format", "mp4",
                         "-o", f"{video_folder}/{title}.mp4",
                         f"https://www.youtube.com/watch?v={video_id}",
@@ -127,7 +129,7 @@ try:
                 else:
                     command = [
                         "mpv",
-                        '--ytdl-format="bv[height<=540]+ba"',
+                        f"--ytdl-format=bv[height<={resolution}]+ba",
                         f"https://www.youtube.com/watch?v={video_id}"
                     ]
                     subprocess.run(command)
