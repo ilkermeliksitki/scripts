@@ -14,6 +14,20 @@ SHORT_BREAK_END_SOUND="./sounds/short_break_end.wav"
 LONG_BREAK_END_SOUND="./sounds/long_break_end.wav"
 CELEBRATION_SOUND="./sounds/celebration.wav"
 
+# add dependency check for paplay and notify-send
+if ! command -v paplay &> /dev/null
+then
+    echo "paplay could not be found, please install it."
+    exit
+fi
+
+if ! command -v notify-send &> /dev/null
+then
+    echo "notify-send could not be found, please install it."
+    exit
+fi
+
+
 # Function to convert minutes to seconds
 function minutes_to_seconds {
     echo $(($1 * 60))
