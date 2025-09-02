@@ -33,7 +33,8 @@ scripts/
 ├── rfv/
 │   └── rfv.sh                       # Script for quickly finding the key words in files
 ├── screen_recorder/
-│   └── screen_recorder.sh           # Records the screen.pt
+│   ├── screen_recorder_start.sh       # Records the screen with optional save (-s flag)
+│   └── screen_recorder_stop.sh        # Stops screen recording
 ├── to_pdf/
 │   └── picture_to_pdf_converter.py  # Converts images to PDF files.
 ├── ventilation/
@@ -50,6 +51,23 @@ scripts/
 ```
 
 ## Key Scripts
+
+### Screen Recorder (`screen_recorder/`)
+A flexible screen recording tool with optional save functionality to avoid unnecessary file storage.
+
+**Features:**
+- **Optional Save**: Use `-s` flag to save recordings, otherwise records without permanent storage
+- **Area Selection**: Interactive area selection using slop
+- **Duration Control**: Set recording duration via popup dialog
+- **Audio Recording**: Captures both screen and system audio
+
+**Usage:**
+```bash
+./screen_recorder/screen_recorder_start.sh      # Record without saving (temporary)
+./screen_recorder/screen_recorder_start.sh -s   # Record and save to ~/Videos/screencasts/
+./screen_recorder/screen_recorder_start.sh -h   # Show help
+./screen_recorder/screen_recorder_stop.sh       # Stop active recording
+```
 
 ### VPN Kill Switch (`vpn/wg-safe/`)
 A secure WireGuard VPN manager with built-in kill switch functionality to prevent IP leaks when VPN connections drop unexpectedly.
