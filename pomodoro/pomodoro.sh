@@ -9,8 +9,10 @@ LONG_BREAK=30
 POMODOROS_BEFORE_LONG_BREAK=4
 
 # Define the sound files for notifications
-FOCUS_END_SOUND=/usr/share/sounds/freedesktop/stereo/complete.oga
-BREAK_END_SOUND=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
+FOCUS_END_SOUND="./sounds/focus_end.wav"
+SHORT_BREAK_END_SOUND="./sounds/short_break_end.wav"
+LONG_BREAK_END_SOUND="./sounds/long_break_end.wav"
+CELEBRATION_SOUND="./sounds/celebration.wav"
 
 # Function to convert minutes to seconds
 function minutes_to_seconds {
@@ -119,7 +121,7 @@ function pomodoro {
         # Check if the desired number of focus periods is reached
         if [ $TOTAL_FOCUS_PERIODS -ne 0 ] && [ $total_focus_periods -ge $TOTAL_FOCUS_PERIODS ]; then
             echo "Completed $TOTAL_FOCUS_PERIODS focus periods. Exiting."
-            notify_sound $FOCUS_END_SOUND # consider changing this to a different sound to indicate completion
+            notify_sound $CELEBRATION_SOUND
             notify "critical" "Completed $TOTAL_FOCUS_PERIODS focus periods. Well done!"
             exit 0
         else
@@ -135,13 +137,13 @@ function pomodoro {
             echo "Long Break ($LONG_BREAK minutes)"
             countdown $(minutes_to_seconds $LONG_BREAK)
             echo "----------"
-            notify_sound $BREAK_END_SOUND
+            notify_sound $LONG_BREAK_END_SOUND
             notify "critical" "Long break is over. Time to focus!"
         else
             echo "Short Break ($SHORT_BREAK minutes)"
             countdown $(minutes_to_seconds $SHORT_BREAK)
             echo "----------"
-            notify_sound $BREAK_END_SOUND
+            notify_sound $SHORT_BREAK_END_SOUND
             notify "critical" "Short break is over. Time to focus!"
         fi
     done
