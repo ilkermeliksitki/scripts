@@ -9,6 +9,7 @@ import subprocess
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
 parser.add_argument('query', type=str, help='The query to search in youtube.')
+parser.add_argument('-s', '--save', action='store_true', help='Save content without playing it automatically')
 
 # parse the arguments
 args = parser.parse_args()
@@ -40,6 +41,10 @@ contents = response_json['contents']['twoColumnSearchResultsRenderer']['primaryC
 
 print('Press a to download the audio to mp3 format to ~/Music folder.')
 print('Press v to download the video to ~/Videos/youtube folder.')
+if not args.save:
+    print('Content will be played automatically after download.')
+else:
+    print('Content will be saved without playing (--save mode).')
 
 try:
     for content_dict in contents:
@@ -71,8 +76,9 @@ try:
                 command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
                 subprocess.run(command, shell=True)
 
-                # play the downloaded audio with mpv
-                subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
+                # play the downloaded audio with mpv only if not in save mode
+                if not args.save:
+                    subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
             elif choice == 'v':
                 video_folder = os.path.expanduser('~/Videos/youtube')
                 if not os.path.exists(video_folder):
@@ -85,8 +91,9 @@ try:
 
                 subprocess.run(command, shell=True)
 
-                # play the downloaded video with mpv
-                subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
+                # play the downloaded video with mpv only if not in save mode
+                if not args.save:
+                    subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
             else:
                 continue
         print('\n')
