@@ -9,7 +9,7 @@ import subprocess
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
 parser.add_argument('query', type=str, help='The query to search in youtube.')
-parser.add_argument('-s', '--save', action='store_true', help='Save content without playing it automatically')
+parser.add_argument('-s', '--save', action='store_true', help='save the content')
 
 # parse the arguments
 args = parser.parse_args()
@@ -39,12 +39,6 @@ response_json = json.loads(response.content.decode())
 
 contents = response_json['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents']
 
-print('Press a to download the audio to mp3 format to ~/Music folder.')
-print('Press v to download the video to ~/Videos/youtube folder.')
-if not args.save:
-    print('Content will be played automatically after download.')
-else:
-    print('Content will be saved without playing (--save mode).')
 
 try:
     for content_dict in contents:
@@ -68,32 +62,47 @@ try:
             print(owner)
             print(published_time)
 
+            print('\na: audio only, v: video, enter: next')
             choice = input('Enter your choice (enter to continue): ').strip().lower()
             if choice == 'a':
                 music_folder = os.path.expanduser('~/Music')
                 if not os.path.exists(music_folder):
                     os.makedirs(music_folder)
-                command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
-                subprocess.run(command, shell=True)
+                if args.save:
+                    command = (
+                        f'yt-dlp -x --audio-format mp3 '
+                        f'-o "{music_folder}/{title}.mp3" https://www.youtube.com/watch?v={video_id}'
+                    )
+                    subprocess.run(command, shell=True)
 
-                # play the downloaded audio with mpv only if not in save mode
-                if not args.save:
-                    subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
+                    command = f'mpv "{music_folder}/{title}.mp3"'
+                    subprocess.run(command, shell=True)
+                else:
+                    command = (
+                        f'mpv --ytdl-format="bestaudio" https://www.youtube.com/watch?v={video_id}'
+                    )
+                    subprocess.run(command, shell=True)
+
             elif choice == 'v':
                 video_folder = os.path.expanduser('~/Videos/youtube')
                 if not os.path.exists(video_folder):
                     os.makedirs(video_folder)
-                command = (
-                    f'yt-dlp -f "bestvideo[height<=720]+bestaudio" '
-                    f'--merge-output-format mp4 '
-                    f'-o "{video_folder}/%(title)s.%(ext)s" {video_id}'
-                )
+                if args.save:
+                    command = (
+                        f'yt-dlp -f "bestvideo[height<=540]+bestaudio" '
+                        f'--merge-output-format mp4 '
+                        f'-o "{video_folder}/{title}.mp4" https://www.youtube.com/watch?v={video_id}'
+                    )
+                    subprocess.run(command, shell=True)
 
-                subprocess.run(command, shell=True)
+                    command = f'mpv "{video_folder}/{title}.mp4"'
+                    subprocess.run(command, shell=True)
 
-                # play the downloaded video with mpv only if not in save mode
-                if not args.save:
-                    subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
+                else:
+                    command = (
+                        f'mpv --ytdl-format="bv[height<=540]+ba" https://www.youtube.com/watch?v={video_id}'
+                    )
+                    subprocess.run(command, shell=True)
             else:
                 continue
         print('\n')
