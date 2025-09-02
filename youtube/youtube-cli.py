@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import json
 import argparse
 import requests
 import subprocess
 
+
+def sanitize_title(title):
+    title = title.strip()
+    title = title.lower()
+    # replace spaces with underscores
+    title = re.sub(r'\s+', '_', title)
+    # remove special characters e.g. !, ?, ., /
+    title = re.sub(r'[^\w\-]', '', title)
+    return title
+
+
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
 parser.add_argument('query', type=str, help='The query to search in youtube.')
+parser.add_argument('-s', '--save', action='store_true', help='save the content')
 
 # parse the arguments
 args = parser.parse_args()
@@ -38,8 +51,6 @@ response_json = json.loads(response.content.decode())
 
 contents = response_json['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents']
 
-print('Press a to download the audio to mp3 format to ~/Music folder.')
-print('Press v to download the video to ~/Videos/youtube folder.')
 
 try:
     for content_dict in contents:
@@ -63,30 +74,63 @@ try:
             print(owner)
             print(published_time)
 
+            title = sanitize_title(title)
+            print('\na: audio only, v: video, enter: next')
             choice = input('Enter your choice (enter to continue): ').strip().lower()
             if choice == 'a':
                 music_folder = os.path.expanduser('~/Music')
                 if not os.path.exists(music_folder):
                     os.makedirs(music_folder)
-                command = f'yt-dlp -x --audio-format mp3 -o "{music_folder}/%(title)s.%(ext)s" {video_id}'
-                subprocess.run(command, shell=True)
+                if args.save:
+                    command = [
+                        "yt-dlp",
+                        "--extract-audio",
+                        "--audio-format", "mp3",
+                        "-o", f"{music_folder}/{title}.mp3",
+                        f"https://www.youtube.com/watch?v={video_id}",
+                    ]
+                    subprocess.run(command)
 
-                # play the downloaded audio with mpv
-                subprocess.run(['mpv', f'{music_folder}/{title}.mp3'])
+                    command = [
+                        "mpv",
+                        f"{music_folder}/{title}.mp3"
+                    ]
+                    subprocess.run(command)
+                else:
+                    command = [
+                        "mpv",
+                        "--ytdl-format='bestaudio'",
+                        f"https://www.youtube.com/watch?v={video_id}"
+                    ]
+                    subprocess.run(command)
+
             elif choice == 'v':
                 video_folder = os.path.expanduser('~/Videos/youtube')
                 if not os.path.exists(video_folder):
                     os.makedirs(video_folder)
-                command = (
-                    f'yt-dlp -f "bestvideo[height<=720]+bestaudio" '
-                    f'--merge-output-format mp4 '
-                    f'-o "{video_folder}/%(title)s.%(ext)s" {video_id}'
-                )
+                if args.save:
+                    command = [
+                        "yt-dlp",
+                        "-f", "bestvideo[height<=540]+bestaudio",
+                        "--merge-output-format", "mp4",
+                        "-o", f"{video_folder}/{title}.mp4",
+                        f"https://www.youtube.com/watch?v={video_id}",
+                    ]
+                    subprocess.run(command)
 
-                subprocess.run(command, shell=True)
+                    command = [
+                        "mpv",
+                        f"{video_folder}/{title}.mp4"
+                    ]
+                    subprocess.run(command)
 
-                # play the downloaded video with mpv
-                subprocess.run(['mpv', f'{video_folder}/{title}.mp4'])
+                else:
+                    command = [
+                        "mpv",
+                        '--ytdl-format="bv[height<=540]+ba"',
+                        f"https://www.youtube.com/watch?v={video_id}"
+                    ]
+                    subprocess.run(command)
             else:
                 continue
         print('\n')
