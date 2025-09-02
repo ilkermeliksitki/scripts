@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import json
 import argparse
 import requests
 import subprocess
+
+
+def sanitize_title(title):
+    title = title.strip()
+    title = title.lower()
+    # replace spaces with underscores
+    title = re.sub(r'\s+', '_', title)
+    # remove special characters e.g. !, ?, ., /
+    title = re.sub(r'[^\w\-]', '', title)
+    return title
+
 
 # create a parser
 parser = argparse.ArgumentParser(description='query youtube and get the relevant results.')
@@ -62,6 +74,7 @@ try:
             print(owner)
             print(published_time)
 
+            title = sanitize_title(title)
             print('\na: audio only, v: video, enter: next')
             choice = input('Enter your choice (enter to continue): ').strip().lower()
             if choice == 'a':
