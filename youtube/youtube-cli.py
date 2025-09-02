@@ -99,7 +99,7 @@ try:
                 else:
                     command = [
                         "mpv",
-                        "--ytdl-format='bestaudio'"
+                        "--ytdl-format='bestaudio'",
                         f"https://www.youtube.com/watch?v={video_id}"
                     ]
                     subprocess.run(command)
@@ -128,7 +128,7 @@ try:
                     command = [
                         "mpv",
                         '--ytdl-format="bv[height<=540]+ba"',
-                        "https://www.youtube.com/watch?v={video_id}"
+                        f"https://www.youtube.com/watch?v={video_id}"
                     ]
                     subprocess.run(command)
             else:
