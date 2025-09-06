@@ -8,11 +8,30 @@ LONG_BREAK=30
 # Define the number of Pomodoros before a long break
 POMODOROS_BEFORE_LONG_BREAK=4
 
+get_script_dir() {
+    # resolve the directory of the script (following symlinks if any)
+    local SOURCE="${BASH_SOURCE[0]}"
+    while [ -L "$SOURCE" ]; do
+        local TARGET="$(readlink "$SOURCE")"
+        if [[ $TARGET == /* ]]; then
+            # if symbolic link is created with absolute path, grab it
+            SOURCE="$TARGET"
+        else
+            # if symbolic link is created with relative path, resolve it
+            SOURCE="$(dirname "$SOURCE")/$TARGET"
+        fi
+    done
+    cd "$(dirname "$SOURCE")" && pwd
+}
+
+# Script directory
+SCRIPT_DIR=$(get_script_dir)
+
 # Define the sound files for notifications
-FOCUS_END_SOUND="./sounds/focus_end.wav"
-SHORT_BREAK_END_SOUND="./sounds/short_break_end.wav"
-LONG_BREAK_END_SOUND="./sounds/long_break_end.wav"
-CELEBRATION_SOUND="./sounds/celebration.wav"
+FOCUS_END_SOUND="$SCRIPT_DIR/sounds/focus_end.wav"
+SHORT_BREAK_END_SOUND="$SCRIPT_DIR/sounds/short_break_end.wav"
+LONG_BREAK_END_SOUND="$SCRIPT_DIR/sounds/long_break_end.wav"
+CELEBRATION_SOUND="$SCRIPT_DIR/sounds/celebration.wav"
 
 # add dependency check for paplay and notify-send
 if ! command -v paplay &> /dev/null
