@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # minimum and maximum wait times (in seconds)
-MIN_WAIT=5
-MAX_WAIT=20
+MIN_WAIT=60
+MAX_WAIT=180
 DEFAULT_DIR="$HOME/Music"
 
 # Use last volume or fallback to 50
