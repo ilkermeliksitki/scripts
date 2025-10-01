@@ -1,4 +1,5 @@
 import re
+import subprocess
 
 def sanitize_title(title):
     title = title.strip()
@@ -19,3 +20,13 @@ def print_video_info(video):
     print("Length:", video['length_text'])
     print("Owner:", video['owner'])
     print("Published:", video['published_time'])
+
+
+def get_video_title(video_id):
+    command = [
+        "yt-dlp",
+        "--get-title",
+        f"https://www.youtube.com/watch?v={video_id}",
+    ]
+    title = subprocess.check_output(command).decode().strip()
+    return title

@@ -1,9 +1,15 @@
 import os
 import subprocess
 
+from utils import sanitize_title, get_video_title
+
 def download_audio(video_id, title, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+
+    if title is None:
+        title = sanitize_title(get_video_title(video_id))
+
     path = os.path.join(save_dir, f"{title}.mp3")
     command = [
         "yt-dlp",
@@ -19,6 +25,10 @@ def download_audio(video_id, title, save_dir):
 def download_video(video_id, title, resolution, save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
+
+    if title is None:
+        title = sanitize_title(get_video_title(video_id))
+
     path = os.path.join(save_dir, f"{title}.mp4")
     command = [
         "yt-dlp",
