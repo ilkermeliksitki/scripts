@@ -30,3 +30,19 @@ def get_video_title(video_id):
     ]
     title = subprocess.check_output(command).decode().strip()
     return title
+
+
+def parse_video_id(link):
+    if 'v=' in link:
+        return link.split('v=')[-1].split('&')[0]
+    elif 'youtu.be/' in link:
+        return link.split('youtu.be/')[-1].split('?')[0]
+    else:
+        raise ValueError("Invalid YouTube link format.")
+
+
+def get_choice(prompt, choices, default=None):
+    choice = input(prompt).strip().lower()
+    if choice in choices:
+        return choice
+    return default
