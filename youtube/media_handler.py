@@ -13,8 +13,7 @@ def download_audio(video_id, title, save_dir):
     path = os.path.join(save_dir, f"{title}.mp3")
     command = [
         "yt-dlp",
-        "--extract-audio",
-        "--audio-format", "mp3",
+        "-f", "bestaudio",
         "--output", path,
         f"https://www.youtube.com/watch?v={video_id}",
     ]
