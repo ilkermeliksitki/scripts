@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from utils import sanitize_title, get_video_title
+from utils import sanitize_title, get_video_title, normalize_audio
 
 def download_audio(video_id, title, save_dir):
     if not os.path.exists(save_dir):
@@ -19,6 +19,9 @@ def download_audio(video_id, title, save_dir):
         f"https://www.youtube.com/watch?v={video_id}",
     ]
     subprocess.run(command)
+
+    normalize_audio(path)
+
     return path
 
 

@@ -1,4 +1,5 @@
 import re
+import os
 import subprocess
 
 def sanitize_title(title):
@@ -46,3 +47,17 @@ def get_choice(prompt, choices, default=None):
     if choice in choices:
         return choice
     return default
+
+
+def normalize_audio(path):
+    temp_path = f"{path}.tmp.mp3"
+    command = [
+        "ffmpeg",
+        "-i", path,
+        "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-y",  # Overwrite output file if it exists
+        temp_path
+    ]
+    subprocess.run(command)
+    os.replace(temp_path, path)
+    print(f"Normalized audio saved to {path}")
