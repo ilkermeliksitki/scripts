@@ -11,6 +11,8 @@ def sanitize_title(title):
     title = re.sub(r'[^\w\-]', '', title)
     # _-_ => -
     title = re.sub(r'_+-+_', '-', title)
+    # ___ => _
+    title = re.sub(r'_+', '_', title)
     return title
 
 
