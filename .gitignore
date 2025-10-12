@@ -5,3 +5,4 @@ aws-archive/icloud/venv/*
 anki_csv/anki_items.csv
 anki_csv/words.csv
 __pycache__
+*.csv
