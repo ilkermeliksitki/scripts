@@ -1,0 +1,1 @@
+../word_of_the_day/wotd.py

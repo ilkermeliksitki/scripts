@@ -23,9 +23,12 @@ def get_word_of_the_day(html_content):
     definition_element = wotd_element.select_one('span.ldoceEntry.Entry').get_text(strip=True)
     return {"title": title_element, "definition": definition_element}
 
-url = "https://www.ldoceonline.com/"
-html_content = fetch_page(url)
-word_of_the_day = get_word_of_the_day(html_content)
-print(word_of_the_day["title"])
-print(word_of_the_day["definition"])
+def get_wotd():
+    url = "https://www.ldoceonline.com/"
+    html_content = fetch_page(url)
+    return get_word_of_the_day(html_content)
 
+if __name__ == "__main__":
+    wotd = get_wotd()
+    print(wotd["title"])
+    print(wotd["definition"])
