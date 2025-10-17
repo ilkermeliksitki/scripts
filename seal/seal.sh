@@ -2,23 +2,27 @@
 # seal.sh
 #
 # Usage:
-#   To lock (archive & encrypt):   ./seal.sh lock recipient@example.com
-#   To unlock (decrypt & extract):  ./seal.sh unlock
+#   To lock (archive & encrypt):   ./seal.sh lock recipient@example.com [name]
+#   To unlock (decrypt & extract):  ./seal.sh unlock [name]
 #
 # Mode: "lock" archives and encrypts the current directory.
 #       "unlock" decrypts and extracts the encrypted archive.
 #
-# Note: The script assumes the encrypted archive will be named "locked.tar.gz.gpg"
-#       and the temporary tarball "locked.tar.gz".
+# Name: Optional parameter for the archive name (without extension)
+#       Default is the current directory name
 
 MODE="$1"
-ARCHIVE="locked.tar.gz"
-ENCRYPTED_ARCHIVE="locked.tar.gz.gpg"
 SCRIPT_NAME=$(basename "$0")
 HOME_DIR="${HOME_DIR:-$HOME}"
 HOME_DIR="${HOME_DIR%/}" # remove trailing slash if exists
 CURRENT_DIR="${CURRENT_DIR:-$PWD}"
+# Get current directory name as default
+DEFAULT_NAME=$(basename "$PWD")
 
+# Set archive name based on input or default to current directory name
+ARCHIVE_NAME="${3:-$DEFAULT_NAME}"
+ARCHIVE="${ARCHIVE_NAME}.tar.gz"
+ENCRYPTED_ARCHIVE="${ARCHIVE_NAME}.tar.gz.gpg"
 
 # security check 1: prevent running as root
 if [ "$(id -u)" -eq 0 ]; then
@@ -33,7 +37,8 @@ if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$CURRENT_DIR" != "$HOME_DIR"/* ]]; then
 fi
 
 if [ -z "$MODE" ]; then
-  echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
+  echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient] [name]"
+  echo "       name - Optional archive name (default: current directory name)"
   exit 1
 fi
 
@@ -48,7 +53,7 @@ case "$MODE" in
     # For encryption, a recipient must be provided.
     if [ -z "$2" ]; then
       echo "Error: Please provide a GPG recipient."
-      echo "Usage: $SCRIPT_NAME lock recipient@example.com"
+      echo "Usage: $SCRIPT_NAME lock recipient@example.com [name]"
       exit 1
     fi
     RECIPIENT="$2"
@@ -56,6 +61,7 @@ case "$MODE" in
     # security check 3: ask yes/no confirmation before encryption
     echo "Warning: Are you sure you want to run this script?"
     echo "         It will archive and encrypt the current directory."
+    echo "         Output will be saved as: $ENCRYPTED_ARCHIVE"
     echo "         Do you want to continue? (y/N)"
     read -r CONFIRM
     if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
@@ -141,6 +147,7 @@ case "$MODE" in
     ;;
   *)
     echo "Error: Unknown mode '$MODE'"
-    echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient]"
+    echo "Usage: $SCRIPT_NAME {lock|unlock} [recipient] [name]"
+    echo "       name - Optional archive name (default: current directory name)"
     exit 1
 esac
