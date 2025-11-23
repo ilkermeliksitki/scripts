@@ -21,16 +21,23 @@ public class App  {
         return seconds;
     }
 
-    private static void popUpWarning() {
+    private static boolean popUpWarning() {
         String message = ConfigUtil.getStringProperty("prompt.message", "Are you wandering off or doing the actionable task?");
         String header = ConfigUtil.getStringProperty("prompt.header", "Focus Check");
 
-        JOptionPane.showMessageDialog(
+        Object[] options = {"I'm Focused", "Snooze"};
+        int n = JOptionPane.showOptionDialog(
             null,
             message,
             header,
-            JOptionPane.WARNING_MESSAGE
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE,
+            null,
+            options,
+            options[0]
         );
+
+        return n == 1; // 1 is the index of "Snooze"
     }
 
     public static void main(String[] args) {
@@ -39,11 +46,23 @@ public class App  {
 
         System.out.println("Focus Prompt is running. Press Ctrl+C to stop.");
 
+        // initial wait
+        int interval = getIntervalSeconds();
+
         while (true) {
             try {
-                int interval = getIntervalSeconds();
-                Thread.sleep(interval * 1000); // from milliseconds to seconds with *1000
-                popUpWarning();
+                Thread.sleep(interval * 1000L); // from milliseconds to seconds with *1000
+                boolean snoozed = popUpWarning();
+                
+                if (snoozed) {
+                    interval = ConfigUtil.getIntProperty("snooze.duration", 300);
+                    if (ConfigUtil.getBooleanProperty("verbose", false)) {
+                        System.out.println("Snoozed for " + interval + " seconds.");
+                    }
+                } else {
+                    interval = getIntervalSeconds();
+                }
+
             } catch(Exception e){
                 e.printStackTrace();
             }
