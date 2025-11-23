@@ -7,3 +7,12 @@ anki_csv/words.csv
 __pycache__
 *.csv
 *.db
+*.class
+
+## focus prompt
+# maven
+focusprompt/target/
+focusprompt/.idea/
+focusprompt/*.log
+focusprompt/*.tmp
+focusprompt/dependency-reduced-pom.xml
