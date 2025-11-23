@@ -26,7 +26,7 @@ public class AppTest extends TestCase
         int max = ConfigUtil.getIntProperty("interval.max", 3600);
         // repeat multiple times to catch any random failures
         for (int i = 0; i < 100; i++) {
-            int seconds = App.getIntervalSeconds();
+            int seconds = IntervalManager.getIntervalSeconds();
 
             // default range is 1800 to 3600 seconds
             assertTrue("Interval should be >= " + min + " seconds", seconds >= min);
