@@ -1,13 +1,15 @@
+package com.focusprompt;
+
 import javax.swing.JOptionPane;
+import com.formdev.flatlaf.FlatLightLaf;
 
-public class FocusPrompt {
+public class App  {
 
-    private static int getIntervalSeconds() {
-        // randomly get a number between 1800 and 3600
-        // (30 minutes to 60 minutes)
+    // randomly get a number between 1800 and 3600 (30 minutes to 60 minutes)
+    protected static int getIntervalSeconds() {
         double random = Math.random();
         int seconds = (int) (1800 + (random * 1800));
-        seconds = 1; // for testing purposes, set to 1 second
+        //seconds = 1; // for testing purposes, set to 1 second
         return seconds;
     }
 
@@ -21,6 +23,9 @@ public class FocusPrompt {
     }
 
     public static void main(String[] args) {
+        // set a modern look with FlatLaf
+        FlatLightLaf.setup();
+
         System.out.println("Focus Prompt is running. Press Ctrl+C to stop.");
 
         while (true) {
