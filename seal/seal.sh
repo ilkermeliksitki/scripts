@@ -11,15 +11,23 @@
 # Mode: "lock" archives and encrypts the current directory.
 #       "unlock" decrypts and extracts the encrypted archive.
 #       (GPG automatically determines the decryption method)
-#
-# Name: Optional parameter for the archive name (without extension)
-#       Default is the current directory name
 
+# ==============================================================================
+# Constants & Configuration
+# ==============================================================================
 SCRIPT_NAME=$(basename "$0")
 HOME_DIR="${HOME_DIR:-$HOME}"
 HOME_DIR="${HOME_DIR%/}" # remove trailing slash if exists
 CURRENT_DIR="${CURRENT_DIR:-$PWD}"
 DEFAULT_NAME=$(basename "$PWD")
+
+# Global variables for cleanup
+TEMP_DIR=""
+ARCHIVE=""
+
+# ==============================================================================
+# Helper Functions
+# ==============================================================================
 
 show_usage() {
   echo "Usage: $SCRIPT_NAME {lock|unlock} [options] [name]"
@@ -34,240 +42,284 @@ show_usage() {
   echo "   or asymmetrically and handles decryption accordingly)"
 }
 
-# function for cleanup in the case of error
-cleanup() {
-  echo "Cleaning up temporary files..."
-  [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
-  [ -f "$ARCHIVE" ] && rm -f "$ARCHIVE"
-  exit 1
+log_info() {
+  echo "$@"
 }
 
-# security check 1: prevent running as root
-if [ "$(id -u)" -eq 0 ]; then
-  echo "Error: Do not run this script as root!"
-  exit 1
-fi
+log_error() {
+  echo "Error: $*" >&2
+}
 
-# security check 2: prevent running outside home directory
-if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$CURRENT_DIR" != "$HOME_DIR"/* ]]; then
-  echo "Error: This script must be run inside your home directory ($HOME_DIR)."
-  exit 1
-fi
+log_warn() {
+  echo "Warning: $*" >&2
+}
 
-# check if the mode argument is provided
-if [ $# -lt 1 ]; then
-  show_usage
-  exit 1
-fi
+# function for cleanup in the case of error
+cleanup() {
+  # Only print if we are actually cleaning something up to avoid noise
+  if [ -d "$TEMP_DIR" ] || [ -f "$ARCHIVE" ]; then
+    log_info "Cleaning up temporary files..."
+    [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
+    [ -f "$ARCHIVE" ] && rm -f "$ARCHIVE"
+  fi
+}
 
-# get the mode (first argument)
-MODE="$1"
-shift
+# Set trap for cleanup
+trap cleanup EXIT
 
-# process remaining arguments based on mode
-case "$MODE" in
-  lock)
-    RECIPIENT=""
-    SYMMETRIC=false
+# Ask for confirmation (y/N)
+confirm() {
+  local prompt="$1"
+  echo "$prompt (y/N)"
+  read -r response
+  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    return 1
+  fi
+  return 0
+}
 
-    # parse options
-    while getopts ":r:s" opt; do
-      case ${opt} in
-        r )
-          RECIPIENT="$OPTARG"
-          if [ "$SYMMETRIC" = true ]; then
-            echo "Error: -r and -s options are mutually exclusive."
-            show_usage
-            exit 1
-          fi
-          ;;
-        s )
-          SYMMETRIC=true
-          if [ -n "$RECIPIENT" ]; then
-            echo "Error: -r and -s options are mutually exclusive."
-            show_usage
-            exit 1
-          fi
-          ;;
-        \? )
-          echo "Invalid option: -$OPTARG"
+# ==============================================================================
+# Security Checks
+# ==============================================================================
+
+check_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    log_error "Do not run this script as root!"
+    exit 1
+  fi
+}
+
+check_location() {
+  if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$CURRENT_DIR" != "$HOME_DIR"/* ]]; then
+    log_error "This script must be run inside your home directory ($HOME_DIR)."
+    exit 1
+  fi
+}
+
+# ==============================================================================
+# Lock (Encrypt) Logic
+# ==============================================================================
+
+cmd_lock() {
+  local recipient=""
+  local symmetric=false
+  local OPTIND
+
+  # Parse arguments specific to lock command
+  while getopts ":r:s" opt; do
+    case ${opt} in
+      r )
+        recipient="$OPTARG"
+        if [ "$symmetric" = true ]; then
+          log_error "-r and -s options are mutually exclusive."
           show_usage
           exit 1
-          ;;
-        : )
-          echo "Option -$OPTARG requires an argument."
+        fi
+        ;;
+      s )
+        symmetric=true
+        if [ -n "$recipient" ]; then
+          log_error "-r and -s options are mutually exclusive."
           show_usage
           exit 1
-          ;;
-      esac
-    done
-    shift $((OPTIND -1))
+        fi
+        ;;
+      \? )
+        log_error "Invalid option: -$OPTARG"
+        show_usage
+        exit 1
+        ;;
+      : )
+        log_error "Option -$OPTARG requires an argument."
+        show_usage
+        exit 1
+        ;;
+    esac
+  done
+  shift $((OPTIND -1))
 
-    ARCHIVE_NAME="${1:-$DEFAULT_NAME}"
-    ARCHIVE="${ARCHIVE_NAME}.tar.gz"
-    ENCRYPTED_ARCHIVE="${ARCHIVE_NAME}.tar.gz.gpg"
+  local archive_name="${1:-$DEFAULT_NAME}"
+  ARCHIVE="${archive_name}.tar.gz"
+  local encrypted_archive="${archive_name}.tar.gz.gpg"
 
-    # validate encryption method is specified
-    if [ -z "$RECIPIENT" ] && [ "$SYMMETRIC" = false ]; then
-      echo "Error: Please specify encryption method (-r recipient or -s for symmetric)."
-      show_usage
-      exit 1
-    fi
-
-    if [ -f "$ENCRYPTED_ARCHIVE" ]; then
-      echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' already exists!"
-      echo "       Please unlock the repository first."
-      echo "       Otherwise, it overwrites the existing encrypted archive."
-      exit 1
-    fi
-
-    # security check 3: ask yes/no confirmation before encryption
-    echo "Warning: Are you sure you want to run this script?"
-    echo "         It will archive and encrypt the current directory."
-    echo "         Output will be saved as: $ENCRYPTED_ARCHIVE"
-    if [ "$SYMMETRIC" = true ]; then
-      echo "         Encryption: Symmetric (password-based)"
-    else
-      echo "         Encryption: Asymmetric for recipient $RECIPIENT"
-    fi
-    echo "         Do you want to continue? (y/N)"
-    read -r CONFIRM
-    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-      echo "Aborted. Wise decision!"
-      exit 1
-    fi
-
-    # check if .git directory exists, if so, ask confirmation to encrypt it
-    if [ -d ".git" ]; then
-      # ask confirmation to encrypt .git directory
-      echo "Warning: There is a .git directory in the repository."
-      echo "         Do you want to include it in the encrypted archive? (y/N)"
-      read -r CONFIRM_GIT
-      if [[ "$CONFIRM_GIT" =~ ^[Yy]$ ]]; then
-        INCLUDE_GIT=true
-      else
-        INCLUDE_GIT=false
-      fi
-    else
-      INCLUDE_GIT=false
-    fi
-
-    # create a temporary directory for the copy
-    TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
-
-    # copy files to temporary directory, which is more robust in the case of failure
-    if [ "$INCLUDE_GIT" = true ]; then
-      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" \
-        -exec cp -r {} "$TEMP_DIR" \; || { echo "Error: Failed to copy files."; cleanup; }
-    else
-      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! -name ".git" \
-        -exec cp -r {} "$TEMP_DIR" \; || { echo "Error: Failed to copy files."; cleanup; }
-    fi
-
-    # archive the contents of the temporary directory
-    echo "Creating archive..."
-    if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .
-    then
-      echo "Error: Failed to create the archive."
-      cleanup
-    fi
-
-    # encrypt the archive with gpg based on encryption method
-    echo "Encrypting archive..."
-    if [ "$SYMMETRIC" = true ]; then
-      # use symmetric encryption (password-based)
-      if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --symmetric --armor "$ARCHIVE"
-      then
-        echo "Error: GPG symmetric encryption failed."
-        cleanup
-      fi
-    else
-      # use asymmetric encryption with recipient
-      if ! gpg --yes --output "$ENCRYPTED_ARCHIVE" --encrypt --armor --recipient "$RECIPIENT" "$ARCHIVE"
-      then
-        echo "Error: GPG asymmetric encryption failed."
-        cleanup
-      fi
-    fi
-
-    # verify that encrypted file exists and has content
-    if [ ! -f "$ENCRYPTED_ARCHIVE" ] || [ ! -s "$ENCRYPTED_ARCHIVE" ]; then
-      echo "Error: Encryption failed or produced an empty file."
-      cleanup
-    fi
-
-    echo "Encryption successful. Removing original files..."
-
-    # only after successful encryption, remove original files
-    if [ "$INCLUDE_GIT" = true ]; then
-      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" \
-        -exec rm -rf {} \; || echo "Warning: Some files could not be removed."
-    else
-      find . -mindepth 1 -maxdepth 1 ! -name "$SCRIPT_NAME" ! -name "$ENCRYPTED_ARCHIVE" ! -name "$TEMP_DIR" ! -name ".git" \
-        -exec rm -rf {} \; || echo "Warning: Some files could not be removed."
-    fi
-
-    # remove the temporary directory and unencrypted archive
-    rm -rf "$TEMP_DIR"
-    rm -f "$ARCHIVE"
-    echo "Lock complete: Encrypted archive saved as '$ENCRYPTED_ARCHIVE' ✅"
-    ;;
-
-  unlock)
-    ARCHIVE_NAME="${1:-$DEFAULT_NAME}"
-    ARCHIVE="${ARCHIVE_NAME}.tar.gz"
-    ENCRYPTED_ARCHIVE="${ARCHIVE_NAME}.tar.gz.gpg"
-
-    # ensure the encrypted archive exists.
-    if [ ! -f "$ENCRYPTED_ARCHIVE" ]; then
-      echo "Error: Encrypted archive '$ENCRYPTED_ARCHIVE' not found!"
-      exit 1
-    fi
-
-    # create a backup of the encrypted archive before attempting decryption
-    BACKUP_FILE="${ENCRYPTED_ARCHIVE}.bak"
-    echo "Creating backup of encrypted archive as $BACKUP_FILE"
-    cp "$ENCRYPTED_ARCHIVE" "$BACKUP_FILE" || {
-      echo "Error: Failed to create backup of encrypted file."
-      exit 1
-    }
-
-    # decrypt the archive.
-    echo "Decrypting archive..."
-    if ! gpg --yes --output "$ARCHIVE" --decrypt "$ENCRYPTED_ARCHIVE"
-    then
-      echo "Error: GPG decryption failed."
-      echo "Your original encrypted archive is preserved as $BACKUP_FILE"
-      exit 1
-    fi
-
-    # check if archive was successfully decrypted
-    if [ ! -f "$ARCHIVE" ] || [ ! -s "$ARCHIVE" ]; then
-      echo "Error: Decryption failed or produced an empty archive."
-      echo "Your original encrypted archive is preserved as $BACKUP_FILE"
-      exit 1
-    fi
-
-    # extract the decrypted tar.gz archive.
-    echo "Extracting archive..."
-    if ! tar -xzf "$ARCHIVE"
-    then
-      echo "Error: Failed to extract the archive."
-      echo "Your archive file is preserved as $ARCHIVE"
-      echo "Your original encrypted archive is preserved as $BACKUP_FILE"
-      exit 1
-    fi
-
-    # if everything is successful, clean up
-    echo "Cleanup temporary files..."
-    rm -f "$ARCHIVE"
-    rm -f "$ENCRYPTED_ARCHIVE"
-    rm -f "$BACKUP_FILE"
-    echo "Unlock complete: Repository decrypted and extracted and cleaned ✅"
-    ;;
-
-  *)
-    echo "Error: Unknown mode '$MODE'"
+  # Validate encryption method
+  if [ -z "$recipient" ] && [ "$symmetric" = false ]; then
+    log_error "Please specify encryption method (-r recipient or -s for symmetric)."
     show_usage
     exit 1
-esac
+  fi
+
+  if [ -f "$encrypted_archive" ]; then
+    log_error "Encrypted archive '$encrypted_archive' already exists!"
+    log_info "       Please unlock the repository first."
+    log_info "       Otherwise, it overwrites the existing encrypted archive."
+    exit 1
+  fi
+
+  # Confirmation
+  log_warn "Are you sure you want to run this script?"
+  log_info "         It will archive and encrypt the current directory."
+  log_info "         Output will be saved as: $encrypted_archive"
+  if [ "$symmetric" = true ]; then
+    log_info "         Encryption: Symmetric (password-based)"
+  else
+    log_info "         Encryption: Asymmetric for recipient $recipient"
+  fi
+
+  if ! confirm "         Do you want to continue?"; then
+    log_info "Aborted. Wise decision!"
+    exit 1
+  fi
+
+  # Git inclusion check
+  local include_git=false
+  if [ -d ".git" ]; then
+    log_warn "There is a .git directory in the repository."
+    if confirm "         Do you want to include it in the encrypted archive?"; then
+      include_git=true
+    else
+      include_git=false
+    fi
+  fi
+
+  # Create temp directory
+  TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
+
+  # Copy files
+  # Construct find command arguments for exclusion
+  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive" ! -name "$TEMP_DIR")
+  if [ "$include_git" = false ]; then
+    excludes+=(! -name ".git")
+  fi
+
+  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec cp -r {} "$TEMP_DIR" \; ; then
+    log_error "Failed to copy files."
+    exit 1
+  fi
+
+  # Archive
+  log_info "Creating archive..."
+  if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .; then
+    log_error "Failed to create the archive."
+    exit 1
+  fi
+
+  # Encrypt
+  log_info "Encrypting archive..."
+  if [ "$symmetric" = true ]; then
+    if ! gpg --yes --output "$encrypted_archive" --symmetric --armor "$ARCHIVE"; then
+      log_error "GPG symmetric encryption failed."
+      exit 1
+    fi
+  else
+    if ! gpg --yes --output "$encrypted_archive" --encrypt --armor --recipient "$recipient" "$ARCHIVE"; then
+      log_error "GPG asymmetric encryption failed."
+      exit 1
+    fi
+  fi
+
+  # Verify encryption output
+  if [ ! -f "$encrypted_archive" ] || [ ! -s "$encrypted_archive" ]; then
+    log_error "Encryption failed or produced an empty file."
+    exit 1
+  fi
+
+  log_info "Encryption successful. Removing original files..."
+
+  # Remove original files
+  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec rm -rf {} \; ; then
+    log_warn "Some files could not be removed."
+  fi
+
+  # Cleanup handled by trap, but we can explicitly clear vars if we want to avoid double cleanup message
+  # though trap handles it safely.
+
+  log_info "Lock complete: Encrypted archive saved as '$encrypted_archive' ✅"
+}
+
+# ==============================================================================
+# Unlock (Decrypt) Logic
+# ==============================================================================
+
+cmd_unlock() {
+  local archive_name="${1:-$DEFAULT_NAME}"
+  ARCHIVE="${archive_name}.tar.gz"
+  local encrypted_archive="${archive_name}.tar.gz.gpg"
+  local backup_file="${encrypted_archive}.bak"
+
+  if [ ! -f "$encrypted_archive" ]; then
+    log_error "Encrypted archive '$encrypted_archive' not found!"
+    exit 1
+  fi
+
+  log_info "Creating backup of encrypted archive as $backup_file"
+  if ! cp "$encrypted_archive" "$backup_file"; then
+    log_error "Failed to create backup of encrypted file."
+    exit 1
+  fi
+
+  log_info "Decrypting archive..."
+  if ! gpg --yes --output "$ARCHIVE" --decrypt "$encrypted_archive"; then
+    log_error "GPG decryption failed."
+    log_info "Your original encrypted archive is preserved as $backup_file"
+    exit 1
+  fi
+
+  if [ ! -f "$ARCHIVE" ] || [ ! -s "$ARCHIVE" ]; then
+    log_error "Decryption failed or produced an empty archive."
+    log_info "Your original encrypted archive is preserved as $backup_file"
+    exit 1
+  fi
+
+  log_info "Extracting archive..."
+  if ! tar -xzf "$ARCHIVE"; then
+    log_error "Failed to extract the archive."
+    log_info "Your archive file is preserved as $ARCHIVE"
+    log_info "Your original encrypted archive is preserved as $backup_file"
+    exit 1
+  fi
+
+  log_info "Cleanup temporary files..."
+  rm -f "$ARCHIVE"
+  rm -f "$encrypted_archive"
+  rm -f "$backup_file"
+
+  # Clear global ARCHIVE variable so trap doesn't try to remove it again (though rm -f is safe)
+  ARCHIVE=""
+
+  log_info "Unlock complete: Repository decrypted and extracted and cleaned ✅"
+}
+
+# ==============================================================================
+# Main Execution
+# ==============================================================================
+
+main() {
+  check_root
+  check_location
+
+  if [ $# -lt 1 ]; then
+    show_usage
+    exit 1
+  fi
+
+  local mode="$1"
+  shift
+
+  case "$mode" in
+    lock)
+      cmd_lock "$@"
+      ;;
+    unlock)
+      cmd_unlock "$@"
+      ;;
+    *)
+      log_error "Unknown mode '$mode'"
+      show_usage
+      exit 1
+      ;;
+  esac
+}
+
+# Run main
+main "$@"
