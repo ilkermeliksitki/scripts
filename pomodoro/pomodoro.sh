@@ -46,7 +46,6 @@ then
     exit
 fi
 
-
 # Function to convert minutes to seconds
 function minutes_to_seconds {
     echo $(($1 * 60))
@@ -67,14 +66,27 @@ function notify {
 
 # Function to display countdown timer
 function countdown {
+    local total_seconds=$1
     local seconds=$1
+    local bar_length=30
 
     while [ $seconds -gt 0 ]; do
-        echo -ne "$(date -u --date @$seconds +%H:%M:%S)\r"
+        local elapsed=$(($total_seconds - $seconds))
+        local percent=$(($elapsed * 100 / $total_seconds))
+        local filled=$(($percent * $bar_length / 100))
+        local empty=$(($bar_length - $filled))
+
+        local filled_bar=""
+        for ((i=0; i<filled; i++)); do filled_bar+="#"; done
+        local empty_bar=""
+        for ((i=0; i<empty; i++)); do empty_bar+="-"; done
+
+        # Print time, newline, bar, then move cursor up one line
+        echo -ne "$(date -u --date @$seconds +%H:%M:%S) remaining\n[${filled_bar}${empty_bar}] ${percent}%\033[1A\r"
         sleep 1
         : $((seconds--))
     done
-    echo -ne "\033[2K\r"  # Clear the line after countdown is done
+    echo -ne "\033[2K\n\033[2K\033[1A\r"
 }
 
 # Function to handle SIGINT (Ctrl+C)
