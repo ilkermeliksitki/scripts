@@ -103,16 +103,18 @@ check_location() {
 # copy files from current dir to destination, optionally including .git
 util_copy_files() {
   local dest_dir="$1"
-  local include_git="$2"
-  local encrypted_archive_name="$3" # Needed to exclude it
+  local encrypted_archive_name="$2" # Needed to exclude it
+  shift 2
+  local excludes_array=("$@")
 
-  # Construct find command arguments for exclusion
-  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$dest_dir")
-  if [ "$include_git" = false ]; then
-    excludes+=(! -name ".git")
-  fi
+  # construct find command arguments for exclusion
+  local find_args=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$dest_dir")
 
-  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec cp -r {} "$dest_dir" \; ; then
+  for pattern in "${excludes_array[@]}"; do
+    find_args+=(! -name "$pattern")
+  done
+
+  if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec cp -r {} "$dest_dir" \; ; then
     log_error "Failed to copy files."
     return 1
   fi
@@ -122,16 +124,18 @@ util_copy_files() {
 # remove files from current dir, optionally including .git
 # ideally use his only after successful encryption
 util_remove_files() {
-  local include_git="$1"
-  local encrypted_archive_name="$2" # Needed to exclude it
-  local temp_dir_name="$3" # Needed to exclude it
+  local encrypted_archive_name="$1" # Needed to exclude it
+  local temp_dir_name="$2" # Needed to exclude it
+  shift 2
+  local excludes_array=("$@")
 
-  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$temp_dir_name")
-  if [ "$include_git" = false ]; then
-    excludes+=(! -name ".git")
-  fi
+  local find_args=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$temp_dir_name")
 
-  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec rm -rf {} \; ; then
+  for pattern in "${excludes_array[@]}"; do
+    find_args+=(! -name "$pattern")
+  done
+
+  if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec rm -rf {} \; ; then
     log_warn "Some files could not be removed."
   fi
 }
@@ -203,10 +207,12 @@ core_decrypt() {
 cmd_lock() {
   local recipient=""
   local symmetric=false
+  local excludes=(".git") # default excludes
   local OPTIND
 
-  # Parse arguments specific to lock command
-  while getopts ":r:s" opt; do
+  # parse arguments specific to lock command
+  # ":r:si:" means r: requires an argument, s: doesn't require an argument, i: requires an argument
+  while getopts ":r:si:" opt; do
     case ${opt} in
       r )
         recipient="$OPTARG"
@@ -224,6 +230,9 @@ cmd_lock() {
           exit 1
         fi
         ;;
+      i )
+        excludes+=("$OPTARG")
+        ;;
       \? )
         log_error "Invalid option: -$OPTARG"
         show_usage
@@ -236,6 +245,7 @@ cmd_lock() {
         ;;
     esac
   done
+  # shift all the processed flags
   shift $((OPTIND -1))
 
   local archive_name="${1:-$DEFAULT_NAME}"
@@ -256,7 +266,7 @@ cmd_lock() {
     exit 1
   fi
 
-  # Confirmation
+  # confirmation
   log_warn "Are you sure you want to run this script?"
   log_info "         It will archive and encrypt the current directory."
   log_info "         Output will be saved as: $encrypted_archive"
@@ -271,31 +281,36 @@ cmd_lock() {
     exit 1
   fi
 
-  # Git inclusion check
-  local include_git=false
+  # git inclusion check
   if [ -d ".git" ]; then
     log_warn "There is a .git directory in the repository."
     if confirm "         Do you want to include it in the encrypted archive?"; then
-      include_git=true
-    else
-      include_git=false
+      # remove .git from excludes
+      # we rebuild the array excluding ".git"
+      local new_excludes=()
+      for item in "${excludes[@]}"; do
+        if [ "$item" != ".git" ]; then
+          new_excludes+=("$item")
+        fi
+      done
+      excludes=("${new_excludes[@]}")
     fi
   fi
 
-  # Create temp directory
+  # create temp directory
   TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
-  # 1. Copy Files
-  if ! util_copy_files "$TEMP_DIR" "$include_git" "$encrypted_archive"; then
+  # 1. copy files
+  if ! util_copy_files "$TEMP_DIR" "$encrypted_archive" "${excludes[@]}"; then
     exit 1
   fi
 
-  # 2. Archive
+  # 2. archive
   if ! core_archive "$ARCHIVE" "$TEMP_DIR"; then
     exit 1
   fi
 
-  # 3. Encrypt
+  # 3. encrypt
   if [ "$symmetric" = true ]; then
     if ! core_encrypt_symmetric "$ARCHIVE" "$encrypted_archive"; then
       exit 1
@@ -306,7 +321,7 @@ cmd_lock() {
     fi
   fi
 
-  # Verify encryption output
+  # verify encryption output
   if [ ! -f "$encrypted_archive" ] || [ ! -s "$encrypted_archive" ]; then
     log_error "Encryption failed or produced an empty file."
     exit 1
@@ -314,8 +329,8 @@ cmd_lock() {
 
   log_info "Encryption successful. Removing original files..."
 
-  # 4. Remove Original Files
-  util_remove_files "$include_git" "$encrypted_archive" "$TEMP_DIR"
+  # 4. remove original files
+  util_remove_files "$encrypted_archive" "$TEMP_DIR" "${excludes[@]}"
 
   log_info "Lock complete: Encrypted archive saved as '$encrypted_archive' ✅"
 }

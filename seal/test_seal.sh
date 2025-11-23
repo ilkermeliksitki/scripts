@@ -24,14 +24,14 @@ setup() {
   echo "Setting up test sandbox..."
   mkdir "$TEST_DIR"
   cd "$TEST_DIR" || exit 1
-  
-  # Create dummy files
+
+  # create dummy files
   echo "Hello World" > file1.txt
   echo "Secret Data" > file2.txt
   mkdir subdir
   echo "Sub content" > subdir/subfile.txt
-  
-  # Create dummy git repo
+
+  # create dummy git repo
   mkdir .git
   echo "git config" > .git/config
 }
@@ -44,7 +44,7 @@ teardown() {
 
 test_symmetric_lock_unlock() {
   echo "---------------------------------------------------"
-  echo "Test Case: Symmetric Lock and Unlock"
+  echo "test case: symmetric lock and unlock"
   echo "---------------------------------------------------"
 
   # 1. lock
@@ -57,20 +57,20 @@ test_symmetric_lock_unlock() {
   # for testing, we can try to rely on gpg-agent caching or use --batch --passphrase if we modified the script.
   # but, the script doesn't support --batch arguments for gpg.
   # so this test might hang if gpg asks for a password.
-  
+
   # WORKAROUND: We will modify the script temporarily or assume the user is watching? 
   # No, automated tests should be automated.
   # the script uses `gpg --symmetric`. This forces interactive password entry by default.
   # to make it testable, we'd need to allow passing extra gpg args or use a non-interactive mode.
-  
+
   # since we can't easily change the script's interactive nature without more refactoring,
   # we will try to use `expect` or just warn the user.
   # OR, we can mock `gpg`!
-  
+
   # MOCKING GPG
   # we'll create a fake gpg function/alias that just copies the file (simulating encryption)
   # this tests the *workflow* (files removed, archive created) without needing actual crypto interaction.
-  
+
   # define a mock gpg wrapper
   gpg() {
     # parse args to find input/output
@@ -156,9 +156,46 @@ test_symmetric_lock_unlock() {
   fi
 }
 
+test_ignore_flag() {
+  echo "---------------------------------------------------"
+  echo "test case: ignore flag (-i)"
+  echo "---------------------------------------------------"
+
+  # setup specific for this test
+  echo "I should be ignored" > ignore_me.txt
+  echo "I should be encrypted" > include_me.txt
+
+  # run lock with -i
+  # input: y (continue), n (don't include git)
+  echo -e "y\nn" | $SEAL_SCRIPT lock -s -i "ignore_me.txt" test_ignore
+
+  # assertions
+  if [ -f "ignore_me.txt" ]; then
+    log_pass "Ignored file 'ignore_me.txt' was preserved."
+  else
+    log_fail "Ignored file 'ignore_me.txt' was DELETED!"
+  fi
+
+  if [ ! -f "include_me.txt" ]; then
+    log_pass "Included file 'include_me.txt' was removed (as expected)."
+  else
+    log_fail "Included file 'include_me.txt' was NOT removed."
+  fi
+
+  # verify archive content (since we mock GPG, the .gpg file is just a tar.gz)
+  if tar -tf test_ignore.tar.gz.gpg | grep -q "ignore_me.txt"; then
+    log_fail "Ignored file found INSIDE the archive!"
+  else
+    log_pass "Ignored file is NOT in the archive."
+  fi
+  # cleanup for this test
+  rm -f ignore_me.txt test_ignore.tar.gz.gpg
+}
+
 # run tests
 setup
 test_symmetric_lock_unlock
+test_ignore_flag
 teardown
 
 echo "---------------------------------------------------"
