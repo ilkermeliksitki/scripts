@@ -1,0 +1,36 @@
+import javax.swing.JOptionPane;
+
+public class FocusPrompt {
+
+    private static int getIntervalSeconds() {
+        // randomly get a number between 1800 and 3600
+        // (30 minutes to 60 minutes)
+        double random = Math.random();
+        int seconds = (int) (1800 + (random * 1800));
+        seconds = 1; // for testing purposes, set to 1 second
+        return seconds;
+    }
+
+    private static void popUpWarning() {
+        JOptionPane.showMessageDialog(
+            null,
+            "Are you wandering off or doing the actionable task?",
+            "Focus Check",
+            JOptionPane.WARNING_MESSAGE
+        );
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Focus Prompt is running. Press Ctrl+C to stop.");
+
+        while (true) {
+            try {
+                int interval = getIntervalSeconds();
+                Thread.sleep(interval * 1000); // from milliseconds to seconds with *1000
+                popUpWarning();
+            } catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+}
