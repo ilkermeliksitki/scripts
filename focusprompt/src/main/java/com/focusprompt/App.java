@@ -22,10 +22,13 @@ public class App  {
     }
 
     private static void popUpWarning() {
+        String message = ConfigUtil.getStringProperty("prompt.message", "Are you wandering off or doing the actionable task?");
+        String header = ConfigUtil.getStringProperty("prompt.header", "Focus Check");
+
         JOptionPane.showMessageDialog(
             null,
-            "Are you wandering off or doing the actionable task?",
-            "Focus Check",
+            message,
+            header,
             JOptionPane.WARNING_MESSAGE
         );
     }

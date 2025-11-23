@@ -44,4 +44,8 @@ public class ConfigUtil {
             return defaultValue;
         }
     }
+
+    public static String getStringProperty(String key, String defaultValue) {
+        return props.getProperty(key, defaultValue);
+    }
 }
