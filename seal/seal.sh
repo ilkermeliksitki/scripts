@@ -241,6 +241,57 @@ parse_lock_args() {
   return $((OPTIND - 1))
 }
 
+validate_lock_preconditions() {
+  # Validate encryption method
+  if [ -z "$recipient" ] && [ "$symmetric" = false ]; then
+    log_error "Please specify encryption method (-r recipient or -s for symmetric)."
+    show_usage
+    exit 1
+  fi
+
+  if [ -f "$encrypted_archive" ]; then
+    log_error "Encrypted archive '$encrypted_archive' already exists!"
+    log_info "       Please unlock the repository first."
+    log_info "       Otherwise, it overwrites the existing encrypted archive."
+    exit 1
+  fi
+}
+
+confirm_lock_action() {
+  # confirmation
+  log_warn "Are you sure you want to run this script?"
+  log_info "         It will archive and encrypt the current directory."
+  log_info "         Output will be saved as: $encrypted_archive"
+  if [ "$symmetric" = true ]; then
+    log_info "         Encryption: Symmetric (password-based)"
+  else
+    log_info "         Encryption: Asymmetric for recipient $recipient"
+  fi
+  
+  if ! confirm "         Do you want to continue?"; then
+    log_info "Aborted. Wise decision!"
+    exit 1
+  fi
+}
+
+check_git_inclusion() {
+  # git inclusion check
+  if [ -d ".git" ]; then
+    log_warn "There is a .git directory in the repository."
+    if confirm "         Do you want to include it in the encrypted archive?"; then
+      # remove .git from excludes
+      # we rebuild the array excluding ".git"
+      local new_excludes=()
+      for item in "${excludes[@]}"; do
+        if [ "$item" != ".git" ]; then
+          new_excludes+=("$item")
+        fi
+      done
+      excludes=("${new_excludes[@]}")
+    fi
+  fi
+}
+
 # ==============================================================================
 # lock (encrypt) logic
 # ==============================================================================
@@ -259,50 +310,9 @@ cmd_lock() {
   ARCHIVE="${archive_name}.tar.gz"
   local encrypted_archive="${archive_name}.tar.gz.gpg"
 
-  # Validate encryption method
-  if [ -z "$recipient" ] && [ "$symmetric" = false ]; then
-    log_error "Please specify encryption method (-r recipient or -s for symmetric)."
-    show_usage
-    exit 1
-  fi
-
-  if [ -f "$encrypted_archive" ]; then
-    log_error "Encrypted archive '$encrypted_archive' already exists!"
-    log_info "       Please unlock the repository first."
-    log_info "       Otherwise, it overwrites the existing encrypted archive."
-    exit 1
-  fi
-
-  # confirmation
-  log_warn "Are you sure you want to run this script?"
-  log_info "         It will archive and encrypt the current directory."
-  log_info "         Output will be saved as: $encrypted_archive"
-  if [ "$symmetric" = true ]; then
-    log_info "         Encryption: Symmetric (password-based)"
-  else
-    log_info "         Encryption: Asymmetric for recipient $recipient"
-  fi
-  
-  if ! confirm "         Do you want to continue?"; then
-    log_info "Aborted. Wise decision!"
-    exit 1
-  fi
-
-  # git inclusion check
-  if [ -d ".git" ]; then
-    log_warn "There is a .git directory in the repository."
-    if confirm "         Do you want to include it in the encrypted archive?"; then
-      # remove .git from excludes
-      # we rebuild the array excluding ".git"
-      local new_excludes=()
-      for item in "${excludes[@]}"; do
-        if [ "$item" != ".git" ]; then
-          new_excludes+=("$item")
-        fi
-      done
-      excludes=("${new_excludes[@]}")
-    fi
-  fi
+  validate_lock_preconditions
+  confirm_lock_action
+  check_git_inclusion
 
   # create temp directory
   TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
@@ -346,22 +356,29 @@ cmd_lock() {
 # unlock (decrypt) logic
 # ==============================================================================
 
+validate_unlock_preconditions() {
+  if [ ! -f "$encrypted_archive" ]; then
+    log_error "Encrypted archive '$encrypted_archive' not found!"
+    exit 1
+  fi
+}
+
+backup_encrypted_archive() {
+  log_info "Creating backup of encrypted archive as $backup_file"
+  if ! cp "$encrypted_archive" "$backup_file"; then
+    log_error "Failed to create backup of encrypted file."
+    exit 1
+  fi
+}
+
 cmd_unlock() {
   local archive_name="${1:-$DEFAULT_NAME}"
   ARCHIVE="${archive_name}.tar.gz"
   local encrypted_archive="${archive_name}.tar.gz.gpg"
   local backup_file="${encrypted_archive}.bak"
 
-  if [ ! -f "$encrypted_archive" ]; then
-    log_error "Encrypted archive '$encrypted_archive' not found!"
-    exit 1
-  fi
-
-  log_info "Creating backup of encrypted archive as $backup_file"
-  if ! cp "$encrypted_archive" "$backup_file"; then
-    log_error "Failed to create backup of encrypted file."
-    exit 1
-  fi
+  validate_unlock_preconditions
+  backup_encrypted_archive
 
   # 1. decrypt
   if ! core_decrypt "$encrypted_archive" "$ARCHIVE"; then
@@ -375,7 +392,7 @@ cmd_unlock() {
     exit 1
   fi
 
-  # 2. Extract
+  # 2. extract
   if ! core_extract "$ARCHIVE"; then
     log_info "Your archive file is preserved as $ARCHIVE"
     log_info "Your original encrypted archive is preserved as $backup_file"
