@@ -21,12 +21,12 @@ HOME_DIR="${HOME_DIR%/}" # remove trailing slash if exists
 CURRENT_DIR="${CURRENT_DIR:-$PWD}"
 DEFAULT_NAME=$(basename "$PWD")
 
-# Global variables for cleanup
+# global variables for cleanup
 TEMP_DIR=""
 ARCHIVE=""
 
 # ==============================================================================
-# Helper Functions
+# helper functions
 # ==============================================================================
 
 show_usage() {
@@ -54,20 +54,20 @@ log_warn() {
   echo "Warning: $*" >&2
 }
 
-# function for cleanup in the case of error
+# cleanup function to be called on exit or error
 cleanup() {
-  # Only print if we are actually cleaning something up to avoid noise
+  # only print if we are actually cleaning something up to avoid noise
   if [ -d "$TEMP_DIR" ] || [ -f "$ARCHIVE" ]; then
-    log_info "Cleaning up temporary files..."
+    log_info "cleaning up temporary files..."
     [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
     [ -f "$ARCHIVE" ] && rm -f "$ARCHIVE"
   fi
 }
 
-# Set trap for cleanup
+# set trap for cleanup
 trap cleanup EXIT
 
-# Ask for confirmation (y/N)
+# ask for confirmation (y/n)
 confirm() {
   local prompt="$1"
   echo "$prompt (y/N)"
@@ -79,7 +79,7 @@ confirm() {
 }
 
 # ==============================================================================
-# Security Checks
+# security checks
 # ==============================================================================
 
 check_root() {
@@ -97,7 +97,107 @@ check_location() {
 }
 
 # ==============================================================================
-# Lock (Encrypt) Logic
+# core abstractions (tools & file ops)
+# ==============================================================================
+
+# copy files from current dir to destination, optionally including .git
+util_copy_files() {
+  local dest_dir="$1"
+  local include_git="$2"
+  local encrypted_archive_name="$3" # Needed to exclude it
+
+  # Construct find command arguments for exclusion
+  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$dest_dir")
+  if [ "$include_git" = false ]; then
+    excludes+=(! -name ".git")
+  fi
+
+  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec cp -r {} "$dest_dir" \; ; then
+    log_error "Failed to copy files."
+    return 1
+  fi
+  return 0
+}
+
+# remove files from current dir, optionally including .git
+# ideally use his only after successful encryption
+util_remove_files() {
+  local include_git="$1"
+  local encrypted_archive_name="$2" # Needed to exclude it
+  local temp_dir_name="$3" # Needed to exclude it
+
+  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$temp_dir_name")
+  if [ "$include_git" = false ]; then
+    excludes+=(! -name ".git")
+  fi
+
+  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec rm -rf {} \; ; then
+    log_warn "Some files could not be removed."
+  fi
+}
+
+core_archive() {
+  local output_file="$1"
+  local source_dir="$2"
+ 
+  log_info "Creating archive..."
+  if ! tar -czf "$output_file" --directory "$source_dir" .; then
+    log_error "Failed to create the archive."
+    return 1
+  fi
+  return 0
+}
+
+core_extract() {
+  local archive_file="$1"
+  
+  log_info "Extracting archive..."
+  if ! tar -xzf "$archive_file"; then
+    log_error "Failed to extract the archive."
+    return 1
+  fi
+  return 0
+}
+
+core_encrypt_symmetric() {
+  local input_file="$1"
+  local output_file="$2"
+
+  log_info "Encrypting archive (Symmetric)..."
+  if ! gpg --yes --output "$output_file" --symmetric --armor "$input_file"; then
+    log_error "GPG symmetric encryption failed."
+    return 1
+  fi
+  return 0
+}
+
+core_encrypt_asymmetric() {
+  local input_file="$1"
+  local output_file="$2"
+  local recipient="$3"
+
+  log_info "Encrypting archive (Asymmetric for $recipient)..."
+  if ! gpg --yes --output "$output_file" --encrypt --armor --recipient "$recipient" "$input_file"; then
+    log_error "GPG asymmetric encryption failed."
+    return 1
+  fi
+  return 0
+}
+
+core_decrypt() {
+  local input_file="$1"
+  local output_file="$2"
+
+  log_info "Decrypting archive..."
+  if ! gpg --yes --output "$output_file" --decrypt "$input_file"; then
+    log_error "GPG decryption failed."
+    return 1
+  fi
+  return 0
+}
+
+# ==============================================================================
+# lock (encrypt) logic
 # ==============================================================================
 
 cmd_lock() {
@@ -165,7 +265,7 @@ cmd_lock() {
   else
     log_info "         Encryption: Asymmetric for recipient $recipient"
   fi
-
+  
   if ! confirm "         Do you want to continue?"; then
     log_info "Aborted. Wise decision!"
     exit 1
@@ -185,35 +285,23 @@ cmd_lock() {
   # Create temp directory
   TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
 
-  # Copy files
-  # Construct find command arguments for exclusion
-  local excludes=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive" ! -name "$TEMP_DIR")
-  if [ "$include_git" = false ]; then
-    excludes+=(! -name ".git")
-  fi
-
-  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec cp -r {} "$TEMP_DIR" \; ; then
-    log_error "Failed to copy files."
+  # 1. Copy Files
+  if ! util_copy_files "$TEMP_DIR" "$include_git" "$encrypted_archive"; then
     exit 1
   fi
 
-  # Archive
-  log_info "Creating archive..."
-  if ! tar -czf "$ARCHIVE" --directory "$TEMP_DIR" .; then
-    log_error "Failed to create the archive."
+  # 2. Archive
+  if ! core_archive "$ARCHIVE" "$TEMP_DIR"; then
     exit 1
   fi
 
-  # Encrypt
-  log_info "Encrypting archive..."
+  # 3. Encrypt
   if [ "$symmetric" = true ]; then
-    if ! gpg --yes --output "$encrypted_archive" --symmetric --armor "$ARCHIVE"; then
-      log_error "GPG symmetric encryption failed."
+    if ! core_encrypt_symmetric "$ARCHIVE" "$encrypted_archive"; then
       exit 1
     fi
   else
-    if ! gpg --yes --output "$encrypted_archive" --encrypt --armor --recipient "$recipient" "$ARCHIVE"; then
-      log_error "GPG asymmetric encryption failed."
+    if ! core_encrypt_asymmetric "$ARCHIVE" "$encrypted_archive" "$recipient"; then
       exit 1
     fi
   fi
@@ -226,19 +314,14 @@ cmd_lock() {
 
   log_info "Encryption successful. Removing original files..."
 
-  # Remove original files
-  if ! find . -mindepth 1 -maxdepth 1 "${excludes[@]}" -exec rm -rf {} \; ; then
-    log_warn "Some files could not be removed."
-  fi
-
-  # Cleanup handled by trap, but we can explicitly clear vars if we want to avoid double cleanup message
-  # though trap handles it safely.
+  # 4. Remove Original Files
+  util_remove_files "$include_git" "$encrypted_archive" "$TEMP_DIR"
 
   log_info "Lock complete: Encrypted archive saved as '$encrypted_archive' ✅"
 }
 
 # ==============================================================================
-# Unlock (Decrypt) Logic
+# unlock (decrypt) logic
 # ==============================================================================
 
 cmd_unlock() {
@@ -258,9 +341,8 @@ cmd_unlock() {
     exit 1
   fi
 
-  log_info "Decrypting archive..."
-  if ! gpg --yes --output "$ARCHIVE" --decrypt "$encrypted_archive"; then
-    log_error "GPG decryption failed."
+  # 1. decrypt
+  if ! core_decrypt "$encrypted_archive" "$ARCHIVE"; then
     log_info "Your original encrypted archive is preserved as $backup_file"
     exit 1
   fi
@@ -271,27 +353,26 @@ cmd_unlock() {
     exit 1
   fi
 
-  log_info "Extracting archive..."
-  if ! tar -xzf "$ARCHIVE"; then
-    log_error "Failed to extract the archive."
+  # 2. Extract
+  if ! core_extract "$ARCHIVE"; then
     log_info "Your archive file is preserved as $ARCHIVE"
     log_info "Your original encrypted archive is preserved as $backup_file"
     exit 1
   fi
 
-  log_info "Cleanup temporary files..."
+  log_info "cleanup temporary files..."
   rm -f "$ARCHIVE"
   rm -f "$encrypted_archive"
   rm -f "$backup_file"
 
-  # Clear global ARCHIVE variable so trap doesn't try to remove it again (though rm -f is safe)
+  # clear global ARCHIVE variable so trap doesn't try to remove it again (though rm -f is safe)
   ARCHIVE=""
 
-  log_info "Unlock complete: Repository decrypted and extracted and cleaned ✅"
+  log_info "unlock complete: repository decrypted and extracted and cleaned ✅"
 }
 
 # ==============================================================================
-# Main Execution
+# main execution
 # ==============================================================================
 
 main() {
@@ -321,5 +402,4 @@ main() {
   esac
 }
 
-# Run main
 main "$@"
