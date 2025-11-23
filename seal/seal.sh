@@ -200,17 +200,10 @@ core_decrypt() {
   return 0
 }
 
-# ==============================================================================
-# lock (encrypt) logic
-# ==============================================================================
-
-cmd_lock() {
-  local recipient=""
-  local symmetric=false
-  local excludes=(".git") # default excludes
+# parse arguments for lock command
+# relies on dynamic scoping for variables: recipient, symmetric, excludes
+parse_lock_args() {
   local OPTIND
-
-  # parse arguments specific to lock command
   # ":r:si:" means r: requires an argument, s: doesn't require an argument, i: requires an argument
   while getopts ":r:si:" opt; do
     case ${opt} in
@@ -245,8 +238,22 @@ cmd_lock() {
         ;;
     esac
   done
-  # shift all the processed flags
-  shift $((OPTIND -1))
+  return $((OPTIND - 1))
+}
+
+# ==============================================================================
+# lock (encrypt) logic
+# ==============================================================================
+
+cmd_lock() {
+  local recipient=""
+  local symmetric=false
+  local excludes=(".git") # default excludes
+
+  # parse arguments
+  parse_lock_args "$@"
+  local args_processed=$?
+  shift "$args_processed"
 
   local archive_name="${1:-$DEFAULT_NAME}"
   ARCHIVE="${archive_name}.tar.gz"
