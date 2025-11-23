@@ -7,9 +7,17 @@ public class App  {
 
     // randomly get a number between 1800 and 3600 (30 minutes to 60 minutes)
     protected static int getIntervalSeconds() {
-        double random = Math.random();
-        int seconds = (int) (1800 + (random * 1800));
-        //seconds = 1; // for testing purposes, set to 1 second
+        int min = ConfigUtil.getIntProperty("interval.min", 1800);
+        int max = ConfigUtil.getIntProperty("interval.max", 3600);
+
+        if (ConfigUtil.getBooleanProperty("verbose", false)) {
+            System.out.println("Interval range: " + min + " to " + max + " seconds.");
+        }
+
+        int seconds = min + (int)(Math.random() * ((max - min) + 1));
+        if (ConfigUtil.getBooleanProperty("verbose", false)) {
+            System.out.println("Next prompt in " + seconds + " seconds.");
+        }
         return seconds;
     }
 
