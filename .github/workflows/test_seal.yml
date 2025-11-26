@@ -3,11 +3,9 @@ name: Test seal
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
     paths:
       - 'seal/**'
   push:
-    branches: [main]
     paths:
       - 'seal/**'
 
