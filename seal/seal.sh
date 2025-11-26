@@ -224,7 +224,7 @@ parse_lock_args() {
         fi
         ;;
       i )
-        excludes+=("$OPTARG%/") # strip trailing slash
+        excludes+=("$OPTARG")
         ;;
       \? )
         log_error "Invalid option: -$OPTARG"
