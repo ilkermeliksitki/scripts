@@ -1,0 +1,19 @@
+name: Test seal
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'seal/**'
+  push:
+    branches: [main]
+    paths:
+      - 'seal/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./test_seal.sh
+        working-directory: seal
