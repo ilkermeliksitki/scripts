@@ -269,6 +269,54 @@ test_ignore_folder_without_trailing_slash() {
   rm -rf ignore_folder test_no_trailing.tar. gz.gpg
 }
 
+test_ignore_file_and_folder_together() {
+    log_test_header "ignore file and folder together (-i file -i folder/)"
+
+    setup_gpg_mock
+
+    # setup specific for this test
+    mkdir ignore_folder
+    echo "I should be ignored" > ignore_folder/secret.txt
+    echo "I should also be ignored" > ignore_me.txt
+    echo "I should be encrypted" > include_me.txt
+
+    # run lock with -i for both file and folder (suppress output)
+    # input: yes (y) for encryption, no (n) for git preservation
+    echo -e "y\nn" | $SEAL_SCRIPT lock -s -i "ignore_folder/" -i "ignore_me.txt" test_both > /dev/null 2>&1
+
+    # assertions
+    if [[ -d "ignore_folder" ]]; then
+      log_pass "Ignored folder 'ignore_folder/' was preserved."
+    else
+      log_fail "Ignored folder 'ignore_folder/' was DELETED!"
+    fi
+
+    if [[ -f "ignore_folder/secret.txt" ]]; then
+      log_pass "Contents of ignored folder preserved."
+    else
+      log_fail "Contents of ignored folder were DELETED!"
+    fi
+
+    if [[ -f "ignore_me.txt" ]]; then
+      log_pass "Ignored file 'ignore_me.txt' was preserved."
+    else
+      log_fail "Ignored file 'ignore_me.txt' was DELETED!"
+    fi
+
+    if [[ ! -f "include_me.txt" ]]; then
+      log_pass "Included file 'include_me.txt' was removed (as expected)."
+    else
+      log_fail "Included file 'include_me.txt' was NOT removed."
+    fi
+
+    # verify archive content
+    if tar -tf test_both.tar.gz.gpg 2>/dev/null | grep -q -e "ignore_folder" -e "ignore_me.txt"; then
+      log_fail "Ignored file or folder found INSIDE the archive!"
+    else
+      log_pass "Ignored file and folder are NOT in the archive."
+    fi
+}
+
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -304,6 +352,7 @@ test_symmetric_lock_unlock
 test_ignore_flag
 test_ignore_folder_with_trailing_slash
 test_ignore_folder_without_trailing_slash
+test_ignore_file_and_folder_together
 teardown
 
 print_summary
