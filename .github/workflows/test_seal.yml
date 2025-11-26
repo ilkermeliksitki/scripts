@@ -16,5 +16,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: ./test_seal.sh
+      - run: ./test_seal.sh -v
         working-directory: seal
