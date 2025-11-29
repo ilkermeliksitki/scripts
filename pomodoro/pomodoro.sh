@@ -41,8 +41,7 @@ fi
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
-    #echo $(($1 * 60))
-    echo 3
+    echo $(($1 * 60))
 }
 
 # function to play sound notification
@@ -322,4 +321,7 @@ function pomodoro {
 }
 
 # start the pomodoro timer
-pomodoro
+# start the pomodoro timer only if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    pomodoro
+fi
