@@ -41,8 +41,7 @@ fi
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
-    #echo $(($1 * 60))
-    echo 3
+    echo $(($1 * 60))
 }
 
 # function to play sound notification
@@ -129,6 +128,35 @@ function get_input {
     eval $var_name="'$input'"
 }
 
+# helper to get valid numeric input
+function get_valid_number {
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local min="$4"
+    local max="$5"
+    local val=""
+
+    while true; do
+        get_input "$prompt" "$default" val
+        if [[ "$val" =~ ^[0-9]+$ ]]; then
+            if [[ -n "$min" ]] && [ "$val" -lt "$min" ]; then
+                 echo "$(color_red "Please enter a number >= $min")"
+                 continue
+            fi
+            if [[ -n "$max" ]] && [ "$val" -gt "$max" ]; then
+                 echo "$(color_red "Please enter a number <= $max")"
+                 continue
+            fi
+            break
+        else
+             echo "$(color_red "Invalid number. Please try again.")"
+        fi
+    done
+
+    eval $var_name="'$val'"
+}
+
 # log session to file
 function log_session {
     local goal="$1"
@@ -213,9 +241,8 @@ function pomodoro {
         echo -e "\n========================================"
         
         # check energy level
-        get_input "$(color_yellow "Current Energy Level (1=Drained, 5=Flow)")" "$(color_52 "3")" current_energy
+        get_valid_number "$(color_yellow "Current Energy Level (1=Drained, 5=Flow)")" "$(color_52 "3")" current_energy 1 5
         
-
         # adaptive logic & suggestions
         read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed $current_energy)
         
@@ -250,7 +277,7 @@ function pomodoro {
         # update previous goal
         previous_goal="$current_goal"
 
-        get_input "Focus Duration (min)" "$suggest_focus" current_focus_time
+        get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
         
         if [ "$current_focus_time" -gt 0 ]; then
             log_session "$current_goal" "$current_focus_time"
