@@ -27,17 +27,19 @@ CELEBRATION_SOUND="$SCRIPT_DIR/sounds/celebration.wav"
 NAG_SOUND="$SCRIPT_DIR/sounds/nagging.wav"
 
 # add dependency check for paplay and notify-send
-if ! command -v paplay &> /dev/null
-then
-    echo "paplay could not be found, please install it."
-    exit
-fi
+function check_dependencies {
+    if ! command -v paplay &> /dev/null
+    then
+        echo "paplay could not be found, please install it."
+        exit 1
+    fi
 
-if ! command -v notify-send &> /dev/null
-then
-    echo "notify-send could not be found, please install it."
-    exit
-fi
+    if ! command -v notify-send &> /dev/null
+    then
+        echo "notify-send could not be found, please install it."
+        exit 1
+    fi
+}
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
@@ -235,7 +237,9 @@ function pomodoro {
     local total_elapsed=0
     local previous_goal=""
     local current_energy=""
-    
+
+    check_dependencies
+
     echo "$(color_36 "Welcome to the Adaptive Pomodoro Timer!")"
     
     while true; do

@@ -16,7 +16,7 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # Mock variables
-MOCK_HOUR=10 # Default to 10 AM (safe time)
+MOCK_HOUR=10
 
 log_pass() {
   ((TESTS_PASSED++))
@@ -72,26 +72,14 @@ setup_mocks() {
   }
   export -f notify-send
 
-  # Mock date
-  # We only care about date +%H for the script logic
+  # mock date
+  # we only care about date +%h for the script logic
   date() {
-    local format=""
-    # Check if arguments contain +%H
-    for arg in "$@"; do
-        if [[ "$arg" == "+%H" ]]; then
-            echo "$MOCK_HOUR"
-            return 0
-        fi
-        # If it's the full date format used in logging or countdown, we can let it pass or mock it too.
-        # The script uses:
-        # 1. date +%H (get_phase_suggestion)
-        # 2. date "+%Y-%m-%d %H:%M:%S" (log_session)
-        # 3. date -u --date @$seconds +%H:%M:%S (countdown)
-    done
-    
-    # For other cases, call real date. 
-    # Since we are shadowing 'date', we need to call the binary directly.
-    /bin/date "$@"
+      if [[ "$1" == "+%H" ]]; then
+        echo "$MOCK_HOUR"
+      else
+        command date "$@"
+      fi
   }
   export -f date
 }
@@ -157,8 +145,8 @@ test_get_phase_suggestion() {
   # Set mock time to 15:00 (3 PM)
   MOCK_HOUR=15
   # elapsed=0, energy=3 (would normally be High Urgency 25/5, but slump protection should kick in)
-  # Wait... looking at logic:
-  # Priority 3 is Slump Protection. Priority 4 is Standard Ramp-up.
+  # Priority 3 is Slump Protection.
+  # Priority 4 is Standard Ramp-up.
   # So Slump Protection overrides Standard Ramp-up.
   read focus break phase <<< $(get_phase_suggestion 0 3)
   if [[ "$focus" -eq 25 ]] && [[ "$break" -eq 5 ]] && [[ "$phase" == *"Afternoon_Slump"* ]]; then
@@ -167,7 +155,7 @@ test_get_phase_suggestion() {
     log_fail "Afternoon Slump suggestion failed. Got: $focus/$break $phase"
   fi
   
-  # Reset MOCK_HOUR to safe time
+  # reset mock_hour to safe time
   MOCK_HOUR=10
 }
 
