@@ -24,3 +24,7 @@ This folder contains sound files used by the Pomodoro script. Below are the attr
   Source: [https://freesound.org/s/378394/](https://freesound.org/s/378394/)
   License: [Creative Commons 0 (CC0)](https://creativecommons.org/publicdomain/zero/1.0/)
 
+- **nagging.wav**
+  Original: "short-loud-success-sound" by rayfaiq
+  Source: [https://freesound.org/people/rayfaiq/sounds/810706/](https://freesound.org/people/rayfaiq/sounds/810706/)
+  License: [Creative Commons 0 (CC0)](https://creativecommons.org/publicdomain/zero/1.0/)
