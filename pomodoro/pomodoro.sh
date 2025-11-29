@@ -24,6 +24,7 @@ FOCUS_END_SOUND="$SCRIPT_DIR/sounds/focus_end.wav"
 SHORT_BREAK_END_SOUND="$SCRIPT_DIR/sounds/short_break_end.wav"
 LONG_BREAK_END_SOUND="$SCRIPT_DIR/sounds/long_break_end.wav"
 CELEBRATION_SOUND="$SCRIPT_DIR/sounds/celebration.wav"
+NAG_SOUND="$SCRIPT_DIR/sounds/nagging.wav"
 
 # add dependency check for paplay and notify-send
 if ! command -v paplay &> /dev/null
@@ -118,7 +119,7 @@ function get_input {
         
         # timeout reached (exit code > 128 usually, but read -t returns failure)
         # nag the user
-        notify_sound $SHORT_BREAK_END_SOUND # Use a short sound for nagging
+        notify_sound $NAG_SOUND # Use a short sound for nagging
         notify "critical" "Waiting for your input..."
     done
     
