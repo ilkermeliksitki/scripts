@@ -82,6 +82,12 @@ setup_mocks() {
       fi
   }
   export -f date
+
+  # mock sleep to speed up tests
+  sleep() {
+    return 0
+  }
+  export -f sleep
 }
 
 test_minutes_to_seconds() {
@@ -159,6 +165,68 @@ test_get_phase_suggestion() {
   MOCK_HOUR=10
 }
 
+test_countdown() {
+  log_test_header "countdown"
+
+  setup_mocks
+
+  # run countdown for 2 seconds
+  # capture output to avoid cluttering test log
+  local output=$(countdown 2)
+
+  # check if it ran (exit code 0)
+  if [[ $? -eq 0 ]]; then
+     log_pass "Countdown ran successfully."
+  else
+     log_fail "Countdown failed to run."
+  fi
+
+  # check for expected output strings
+  if [[ "$output" == *"remaining"* ]]; then
+     log_pass "Countdown output contains 'remaining'."
+  else
+     log_fail "Countdown output missing 'remaining'. Output: $output"
+  fi
+}
+
+test_get_input() {
+  log_test_header "get_input"
+
+  setup_mocks
+
+  # test case 1: explicit input
+  echo "test_value" | (
+    get_input "Enter value" "default" result
+    if [[ "$result" == "test_value" ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Explicit input accepted."
+  else
+     log_fail "Explicit input failed."
+  fi
+
+  # test case 2: default value
+  echo "" | (
+    get_input "Enter value" "default_val" result
+    if [[ "$result" == "default_val" ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Default value accepted."
+  else
+     log_fail "Default value failed."
+  fi
+}
+
 test_log_session() {
   log_test_header "log_session"
 
@@ -184,19 +252,19 @@ test_log_session() {
 
 test_get_valid_number() {
   log_test_header "get_valid_number"
-  
+
   setup_mocks
 
-  # Mock input using a file redirection or pipe
-  # We need to simulate user input. 
+  # mock input using a file redirection or pipe
+  # we need to simulate user input.
   # get_valid_number uses 'read -e -p ...' inside 'get_input'
-  
-  # Test valid input
-  # We pipe "42" to the function
+
+  # test valid input
+  # we pipe "42" to the function
   echo "42" | (
-    # We need to source again inside subshell or export functions, 
+    # we need to source again inside subshell or export functions,
     # but since we are in the same script and functions are defined, it should work if we just call it.
-    # However, 'read' reads from stdin.
+    # however, 'read' reads from stdin.
     get_valid_number "Enter number" "10" result 1 100
     if [[ "$result" -eq 42 ]]; then
        exit 0
@@ -204,14 +272,14 @@ test_get_valid_number() {
        exit 1
     fi
   )
-  
+
   if [[ $? -eq 0 ]]; then
      log_pass "Valid number input accepted."
   else
      log_fail "Valid number input failed."
   fi
 
-  # Test default value (empty input)
+  # test default value (empty input)
   echo "" | (
     get_valid_number "Enter number" "10" result 1 100
     if [[ "$result" -eq 10 ]]; then
@@ -263,6 +331,8 @@ test_minutes_to_seconds
 test_get_phase_suggestion
 test_log_session
 test_get_valid_number
+test_countdown
+test_get_input
 teardown
 
 print_summary
