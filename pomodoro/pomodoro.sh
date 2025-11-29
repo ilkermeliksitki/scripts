@@ -102,7 +102,7 @@ function get_input {
     local default="$2"
     local var_name="$3"
     local input=""
-    local timeout=${4:-30}
+    local timeout=${4:-60}
 
     while true; do
         if [ -n "$default" ]; then
