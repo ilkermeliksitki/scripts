@@ -176,6 +176,11 @@ function get_phase_suggestion {
     fi
 }
 
+# Color helpers
+function color_blue { echo -ne "\033[1;34m$1\033[0m"; }
+function color_brown { echo -ne "\033[1;33m$1\033[0m"; } # Yellow/Brown
+function color_green { echo -ne "\033[1;32m$1\033[0m"; }
+
 # main pomodoro loop
 function pomodoro {
     local total_elapsed=0
@@ -188,7 +193,7 @@ function pomodoro {
         echo -e "\n========================================"
         
         # check energy level
-        get_input "Energy Level (1=Drained, 5=Flow)" "3" current_energy
+        get_input "Current Energy Level (1=Drained, 5=Flow)" "3" current_energy
         
         # adaptive logic & suggestions
         read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed $current_energy)
@@ -199,8 +204,6 @@ function pomodoro {
         if [[ "$phase_name" == *"The_Reset"* ]]; then
              echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
              echo "Suggestion: Take a long break!"
-             suggest_focus=0
-             suggest_break=45
         else
              echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
              echo "Suggested: Focus ${suggest_focus}m / Break ${suggest_break}m"
@@ -232,7 +235,7 @@ function pomodoro {
             log_session "$current_goal" "$current_focus_time"
             
             # focus timer
-            echo -e "\n>>> Focus: $current_goal ($current_focus_time min)"
+            echo -e "\n>>> $(color_blue "Focus"): $(color_green "$current_goal") ($current_focus_time min)"
             notify "normal" "Focus: $current_goal"
             countdown $(minutes_to_seconds $current_focus_time)
             
@@ -246,7 +249,7 @@ function pomodoro {
         if [ "$take_break" != "n" ]; then
              get_input "Break Duration (min)" "$suggest_break" current_break_time
              
-             echo -e "\n>>> Break ($current_break_time min)"
+             echo -e "\n>>> $(color_brown "Break") ($current_break_time min)"
              countdown $(minutes_to_seconds $current_break_time)
              
              if [ "$current_break_time" -ge 20 ]; then
