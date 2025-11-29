@@ -41,7 +41,8 @@ fi
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
-    echo $(($1 * 60))
+    #echo $(($1 * 60))
+    echo 3
 }
 
 # function to play sound notification
@@ -159,10 +160,11 @@ function get_valid_number {
 
 # log session to file
 function log_session {
-    local goal="$1"
-    local duration="$2"
+    local type="$1"
+    local description="$2"
+    local duration="$3"
     local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-    echo "$timestamp | Goal: $goal | Duration: ${duration}m" >> "$SESSION_LOG"
+    echo "$timestamp | Type: $type | Description: $description | Duration: ${duration}m" >> "$SESSION_LOG"
 }
 
 # determine phase and suggested times based on elapsed minutes
@@ -280,7 +282,7 @@ function pomodoro {
         get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
         
         if [ "$current_focus_time" -gt 0 ]; then
-            log_session "$current_goal" "$current_focus_time"
+            log_session "Focus" "$current_goal" "$current_focus_time"
             
             # focus timer
             echo -e "\n>>> $(color_blue "Focus"): $(color_green "$current_goal") ($current_focus_time min)"
@@ -297,9 +299,12 @@ function pomodoro {
         clear_lines 1
 
         if [ "$take_break" != "n" ]; then
+             get_input "Break Activity" "rest" break_activity
              get_input "Break Duration (min)" "$suggest_break" current_break_time
              
-             echo -e "\n>>> $(color_brown "Break") ($current_break_time min)"
+             log_session "Break" "$break_activity" "$current_break_time"
+
+             echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
              countdown $(minutes_to_seconds $current_break_time)
              
              if [ "$current_break_time" -ge 20 ]; then
