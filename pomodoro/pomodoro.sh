@@ -101,7 +101,7 @@ function get_input {
     local var_name="$3"
     local input=""
     local timeout=${4:-30}
-    
+
     while true; do
         if [ -n "$default" ]; then
             # prompt with default
@@ -122,6 +122,9 @@ function get_input {
         notify "critical" "Waiting for your input..."
     done
     
+    # strip ansi color codes from input to ensure we get clean values
+    input=$(echo "$input" | sed 's/\x1b\[[0-9;]*m//g')
+    
     eval $var_name="'$input'"
 }
 
@@ -137,6 +140,8 @@ function log_session {
 function get_phase_suggestion {
     local elapsed="$1"
     local energy="$2" # 1-5 scale
+    # Sanitize energy (remove non-digits)
+    energy=${energy//[^0-9]/}
     local current_hour=$(date +%H)
 
     # priority 1: the hard reset
@@ -177,9 +182,15 @@ function get_phase_suggestion {
 }
 
 # Color helpers
-function color_blue { echo -ne "\033[1;34m$1\033[0m"; }
-function color_brown { echo -ne "\033[1;33m$1\033[0m"; } # Yellow/Brown
-function color_green { echo -ne "\033[1;32m$1\033[0m"; }
+function color_red    { echo -ne "\033[1;31m$1\033[0m"; }
+function color_green  { echo -ne "\033[1;32m$1\033[0m"; }
+function color_brown  { echo -ne "\033[1;33m$1\033[0m"; }
+function color_blue   { echo -ne "\033[1;34m$1\033[0m"; }
+function color_purple { echo -ne "\033[1;35m$1\033[0m"; }
+function color_36     { echo -ne "\033[1;36m$1\033[0m"; }
+function color_52     { echo -ne "\033[1;52m$1\033[0m"; }
+function color_yellow { echo -ne "\033[1;93m$1\033[0m"; }
+function color_cyan   { echo -ne "\033[1;96m$1\033[0m"; }
 
 # Clear lines helper
 function clear_lines {
@@ -195,14 +206,15 @@ function pomodoro {
     local previous_goal=""
     local current_energy=""
     
-    echo "Welcome to the Adaptive Pomodoro Timer!"
+    echo "$(color_36 "Welcome to the Adaptive Pomodoro Timer!")"
     
     while true; do
         echo -e "\n========================================"
         
         # check energy level
-        get_input "Current Energy Level (1=Drained, 5=Flow)" "3" current_energy
+        get_input "$(color_yellow "Current Energy Level (1=Drained, 5=Flow)")" "$(color_52 "3")" current_energy
         
+
         # adaptive logic & suggestions
         read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed $current_energy)
         
@@ -210,16 +222,16 @@ function pomodoro {
         display_phase="${phase_name//_/ }"
         
         if [[ "$phase_name" == *"The_Reset"* ]]; then
-             echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
-             echo "Suggestion: Take a long break!"
+             echo "$(color_blue "Phase:") $(color_red " $display_phase") $(color_52 "(Elapsed: ${total_elapsed}m)")"
+             echo "$(color_blue "Suggestion:") $(color_red "Take a long break!")"
         else
-             echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
-             echo "Suggested: Focus ${suggest_focus}m / Break ${suggest_break}m"
+             echo "$(color_blue "Phase:") $(color_red " $display_phase") $(color_52 "(Elapsed: ${total_elapsed}m)")"
+             echo "$(color_blue "Suggested:") $(color_red "Focus ${suggest_focus}m / Break ${suggest_break}m")"
         fi
         
         # goal setting & confirmation
         while true; do
-            get_input "Enter Focus Goal (or 'exit' to quit)" "$previous_goal" current_goal
+            get_input "$(color_yellow "Enter Focus Goal (or 'exit' to quit)")" "$previous_goal" current_goal
             
             if [ "$current_goal" == "exit" ]; then
                 echo "Goodbye!"
@@ -271,9 +283,8 @@ function pomodoro {
         fi
         
         # wait for next loop
-        echo -e "\n"
-        read -p "Press Enter to continue to next session..."
-        clear_lines 2
+        get_input "Next session?" "y" next_session
+        clear_lines 1
     done
 }
 
