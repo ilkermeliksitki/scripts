@@ -40,7 +40,8 @@ fi
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
-    echo $(($1 * 60))
+    #echo $(($1 * 60))
+    echo 3
 }
 
 # function to play sound notification
@@ -134,16 +135,48 @@ function log_session {
 
 # determine phase and suggested times based on elapsed minutes
 function get_phase_suggestion {
-    local elapsed=$1
-    # returns: focus_time break_time phase_name
+    local elapsed="$1"
+    local energy="$2" # 1-5 scale
+    local current_hour=$(date +%H)
+
+    # priority 1: the hard reset every 4 hours
+    if [[ "$elapsed" -gt 240 ]] && [[ "$energy" -le 2 ]]; then
+        echo "0 45 The Reset"
+        return
+    fi
+
+    # priority 1: the hard reset
+    # If over 4 hours deep AND low energy, force a long break
+    if [ $elapsed -gt 240 ] && [ $energy -le 2 ]; then
+        echo "0 45 The_Reset_(Burnout_Prev)"
+        return
+    fi
+
+    # priority 2: energy & flow adaptation
+    if [ "$energy" -eq 5 ]; then
+        echo "60 10 Flow_State"
+        return
+    elif [ "$energy" -eq 1 ]; then
+        echo "15 5 Survival_Mode"
+        return
+    fi
+
+    # priority 3: circadian rhythm (afternoon slump protection)
+    # between 14:00 (2pm) and 16:00 (4pm), reduce load
+    if [ "$current_hour" -ge 14 ] && [ "$current_hour" -lt 16 ]; then
+        echo "25 5 Afternoon_Slump_Protection"
+        return
+    fi
+
+    # priority 4: standard ramp-up
     if [ $elapsed -lt 120 ]; then
-        echo "25 5 High Urgency"
+        echo "25 5 High_Urgency"
     elif [ $elapsed -lt 360 ]; then
-        echo "50 10 Deep Work"
+        echo "50 10 Deep_Work"
     elif [ $elapsed -lt 420 ]; then
-        echo "0 45 The Reset" # Suggesting a long break, 0 focus implies we might want to skip straight to break or just handle it manually
+        echo "0 45 The_Scheduled_Reset"
     else
-        echo "45 15 Maintenance"
+        echo "45 15 Maintenance_Mode"
     fi
 }
 
@@ -151,22 +184,29 @@ function get_phase_suggestion {
 function pomodoro {
     local total_elapsed=0
     local previous_goal=""
+    local current_energy=""
     
     echo "Welcome to the Adaptive Pomodoro Timer!"
     
     while true; do
         echo -e "\n========================================"
         
-        # adaptive logic & suggestions
-        read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed)
+        # check energy level
+        get_input "Energy Level (1=Drained, 5=Flow)" "3" current_energy
         
-        if [ "$phase_name" == "The Reset" ]; then
-             echo "Phase: $phase_name (Elapsed: ${total_elapsed}m)"
+        # adaptive logic & suggestions
+        read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed $current_energy)
+        
+        # format phase name (replace underscores with spaces)
+        display_phase="${phase_name//_/ }"
+        
+        if [[ "$phase_name" == *"The_Reset"* ]]; then
+             echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
              echo "Suggestion: Take a long break!"
              suggest_focus=0
              suggest_break=45
         else
-             echo "Phase: $phase_name (Elapsed: ${total_elapsed}m)"
+             echo "Phase: $display_phase (Elapsed: ${total_elapsed}m)"
              echo "Suggested: Focus ${suggest_focus}m / Break ${suggest_break}m"
         fi
         
