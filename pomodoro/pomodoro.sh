@@ -139,16 +139,10 @@ function get_phase_suggestion {
     local energy="$2" # 1-5 scale
     local current_hour=$(date +%H)
 
-    # priority 1: the hard reset every 4 hours
-    if [[ "$elapsed" -gt 240 ]] && [[ "$energy" -le 2 ]]; then
-        echo "0 45 The Reset"
-        return
-    fi
-
     # priority 1: the hard reset
-    # If over 4 hours deep AND low energy, force a long break
+    # if over 4 hours deep and low energy, force a long break
     if [ $elapsed -gt 240 ] && [ $energy -le 2 ]; then
-        echo "0 45 The_Reset_(Burnout_Prev)"
+        echo "0 30 The_Reset_(Burnout_Prev)"
         return
     fi
 
@@ -171,12 +165,14 @@ function get_phase_suggestion {
     # priority 4: standard ramp-up
     if [ $elapsed -lt 120 ]; then
         echo "25 5 High_Urgency"
-    elif [ $elapsed -lt 360 ]; then
+    elif [ $elapsed -lt 240 ]; then
         echo "50 10 Deep_Work"
-    elif [ $elapsed -lt 420 ]; then
-        echo "0 45 The_Scheduled_Reset"
+    elif [ $elapsed -lt 360 ]; then
+        # prevent infinite loop
+        echo "25 20 Taper_Down_&_Reset"
     else
-        echo "45 15 Maintenance_Mode"
+        # after 6 hours, switch to maintenance mode to maintain quality
+        echo "25 5 Maintenance_Mode"
     fi
 }
 
@@ -236,8 +232,8 @@ function pomodoro {
             log_session "$current_goal" "$current_focus_time"
             
             # focus timer
-            echo -e "\n>>> Starting Focus: $current_goal ($current_focus_time min)"
-            notify "normal" "Starting Focus: $current_goal"
+            echo -e "\n>>> Focus: $current_goal ($current_focus_time min)"
+            notify "normal" "Focus: $current_goal"
             countdown $(minutes_to_seconds $current_focus_time)
             
             total_elapsed=$((total_elapsed + current_focus_time))
@@ -250,7 +246,7 @@ function pomodoro {
         if [ "$take_break" != "n" ]; then
              get_input "Break Duration (min)" "$suggest_break" current_break_time
              
-             echo -e "\n>>> Starting Break ($current_break_time min)"
+             echo -e "\n>>> Break ($current_break_time min)"
              countdown $(minutes_to_seconds $current_break_time)
              
              if [ "$current_break_time" -ge 20 ]; then
