@@ -43,8 +43,7 @@ function check_dependencies {
 
 # function to convert minutes to seconds
 function minutes_to_seconds {
-    #echo $(($1 * 60))
-    echo 3
+    echo $(($1 * 60))
 }
 
 # function to play sound notification
