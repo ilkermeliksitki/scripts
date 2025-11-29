@@ -181,6 +181,14 @@ function color_blue { echo -ne "\033[1;34m$1\033[0m"; }
 function color_brown { echo -ne "\033[1;33m$1\033[0m"; } # Yellow/Brown
 function color_green { echo -ne "\033[1;32m$1\033[0m"; }
 
+# Clear lines helper
+function clear_lines {
+    local count=${1:-1}
+    for ((i=0; i<count; i++)); do
+        echo -ne "\033[1A\033[2K"
+    done
+}
+
 # main pomodoro loop
 function pomodoro {
     local total_elapsed=0
@@ -246,6 +254,8 @@ function pomodoro {
 
         # break logic
         get_input "Take a break?" "y" take_break
+        clear_lines 1
+
         if [ "$take_break" != "n" ]; then
              get_input "Break Duration (min)" "$suggest_break" current_break_time
              
@@ -263,8 +273,7 @@ function pomodoro {
         # wait for next loop
         echo -e "\n"
         read -p "Press Enter to continue to next session..."
-        echo -ne "\033[1A\033[2K" # clear the prompt line
-        echo -ne "\033[1A\033[2K" # clear the empty line
+        clear_lines 2
     done
 }
 
