@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# Define the durations (in minutes)
-FOCUS_TIME=60
-SHORT_BREAK=10
-LONG_BREAK=30
-
-# Define the number of Pomodoros before a long break
-POMODOROS_BEFORE_LONG_BREAK=4
-
 get_script_dir() {
     # resolve the directory of the script (following symlinks if any)
     local SOURCE="${BASH_SOURCE[0]}"
@@ -24,10 +16,10 @@ get_script_dir() {
     cd "$(dirname "$SOURCE")" && pwd
 }
 
-# Script directory
+# script directory
 SCRIPT_DIR=$(get_script_dir)
 
-# Define the sound files for notifications
+# define the sound files for notifications
 FOCUS_END_SOUND="$SCRIPT_DIR/sounds/focus_end.wav"
 SHORT_BREAK_END_SOUND="$SCRIPT_DIR/sounds/short_break_end.wav"
 LONG_BREAK_END_SOUND="$SCRIPT_DIR/sounds/long_break_end.wav"
@@ -46,12 +38,12 @@ then
     exit
 fi
 
-# Function to convert minutes to seconds
+# function to convert minutes to seconds
 function minutes_to_seconds {
     echo $(($1 * 60))
 }
 
-# Function to play sound notification
+# function to play sound notification
 function notify_sound {
     # play the sound at the background
     paplay $1 &
@@ -95,104 +87,147 @@ function handle_sigint {
     exit 0
 }
 
-# Register SIGINT handler
+# register SIGINT handler
 trap handle_sigint SIGINT
 
-# Parse command-line arguments
-TOTAL_FOCUS_PERIODS=0
+# session log
+SESSION_LOG="$SCRIPT_DIR/session_log.log"
 
-# get options f and l
-while getopts ":f:l:" opt; do
-    case $opt in
-        f)
-            TOTAL_FOCUS_PERIODS=$OPTARG
-            ;;
-        l)
-            POMODOROS_BEFORE_LONG_BREAK=$OPTARG
-            ;;
-        \?)
-            echo "Invalid option: -$OPTARG" >&2
-            exit 1
-            ;;
-        :)
-            echo "Option -$OPTARG requires an argument." >&2
-            exit 1
-            ;;
-    esac
-done
-
-# Calculate the finish time
-function calculate_finish_time {
-    local focus_time=$1
-    local short_break_time=$2
-    local long_break_time=$3
-    local total_focus_periods=$4
-    local pomodoros_before_long_break=$5
-
-    local total_seconds=0
-
-    # Calculate total duration in seconds
-    for ((i=1; i<=total_focus_periods; i++)); do
-        total_seconds=$(($total_seconds + $(minutes_to_seconds $focus_time)))
-        # Exclude the break after last focus time
-        if (( $i < $total_focus_periods )); then
-            # Choose long or short break
-            if (( $i % $pomodoros_before_long_break == 0 )); then
-                total_seconds=$(($total_seconds + $(minutes_to_seconds $long_break_time)))
-            else
-                total_seconds=$(($total_seconds + $(minutes_to_seconds $short_break_time)))
+# helper to get user input with default value and nagging
+function get_input {
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local input=""
+    local timeout=${4:-30}
+    
+    while true; do
+        if [ -n "$default" ]; then
+            # prompt with default
+            if read -t $timeout -e -p "$prompt [$default]: " input; then
+                : ${input:=$default}
+                break
+            fi
+        else
+            # prompt without default
+            if read -t $timeout -e -p "$prompt: " input; then
+                break
             fi
         fi
+        
+        # timeout reached (exit code > 128 usually, but read -t returns failure)
+        # nag the user
+        notify_sound $SHORT_BREAK_END_SOUND # Use a short sound for nagging
+        notify "critical" "Waiting for your input..."
     done
-
-    # Calculate finish time
-    local finish_time=$(date -d "+$total_seconds seconds" +%H:%M:%S)
-    echo "Expected finish time: $finish_time"
+    
+    eval $var_name="'$input'"
 }
 
-# Main Pomodoro loop
+# log session to file
+function log_session {
+    local goal="$1"
+    local duration="$2"
+    local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "$timestamp | Goal: $goal | Duration: ${duration}m" >> "$SESSION_LOG"
+}
+
+# determine phase and suggested times based on elapsed minutes
+function get_phase_suggestion {
+    local elapsed=$1
+    # returns: focus_time break_time phase_name
+    if [ $elapsed -lt 120 ]; then
+        echo "25 5 High Urgency"
+    elif [ $elapsed -lt 360 ]; then
+        echo "50 10 Deep Work"
+    elif [ $elapsed -lt 420 ]; then
+        echo "0 45 The Reset" # Suggesting a long break, 0 focus implies we might want to skip straight to break or just handle it manually
+    else
+        echo "45 15 Maintenance"
+    fi
+}
+
+# main pomodoro loop
 function pomodoro {
-    local pomodoros_completed=0
-    local total_focus_periods=0
-
-    calculate_finish_time $FOCUS_TIME $SHORT_BREAK $LONG_BREAK $TOTAL_FOCUS_PERIODS $POMODOROS_BEFORE_LONG_BREAK
-
+    local total_elapsed=0
+    local previous_goal=""
+    
+    echo "Welcome to the Adaptive Pomodoro Timer!"
+    
     while true; do
-        # Focus period
-        ((total_focus_periods++))
-        echo "Focus $total_focus_periods ($FOCUS_TIME minutes)"
-        countdown $(minutes_to_seconds $FOCUS_TIME)
-
-        # Check if the desired number of focus periods is reached
-        if [ $TOTAL_FOCUS_PERIODS -ne 0 ] && [ $total_focus_periods -ge $TOTAL_FOCUS_PERIODS ]; then
-            echo "Completed $TOTAL_FOCUS_PERIODS focus periods. Exiting."
-            notify_sound $CELEBRATION_SOUND
-            notify "critical" "Completed $TOTAL_FOCUS_PERIODS focus periods. Well done!"
-            exit 0
+        echo -e "\n========================================"
+        
+        # adaptive logic & suggestions
+        read suggest_focus suggest_break phase_name <<< $(get_phase_suggestion $total_elapsed)
+        
+        if [ "$phase_name" == "The Reset" ]; then
+             echo "Phase: $phase_name (Elapsed: ${total_elapsed}m)"
+             echo "Suggestion: Take a long break!"
+             suggest_focus=0
+             suggest_break=45
         else
-            notify_sound $FOCUS_END_SOUND
-            notify "normal" "Focus $total_focus_periods completed. Take a break!"
+             echo "Phase: $phase_name (Elapsed: ${total_elapsed}m)"
+             echo "Suggested: Focus ${suggest_focus}m / Break ${suggest_break}m"
         fi
-
-        # Increment the pomodoros completed
-        ((pomodoros_completed++))
-
-        # Check if it's time for a long break
-        if [ $(($pomodoros_completed % $POMODOROS_BEFORE_LONG_BREAK)) = 0 ]; then
-            echo "Long Break ($LONG_BREAK minutes)"
-            countdown $(minutes_to_seconds $LONG_BREAK)
-            echo "----------"
-            notify_sound $LONG_BREAK_END_SOUND
-            notify "critical" "Long break is over. Time to focus!"
-        else
-            echo "Short Break ($SHORT_BREAK minutes)"
-            countdown $(minutes_to_seconds $SHORT_BREAK)
-            echo "----------"
+        
+        # goal setting & confirmation
+        while true; do
+            get_input "Enter Focus Goal (or 'exit' to quit)" "$previous_goal" current_goal
+            
+            if [ "$current_goal" == "exit" ]; then
+                echo "Goodbye!"
+                exit 0
+            fi
+            
+            if [ ${#current_goal} -ge 10 ]; then
+                break
+            fi
+            
+            echo "Goal too short. Please be more specific (min 10 chars)."
             notify_sound $SHORT_BREAK_END_SOUND
-            notify "critical" "Short break is over. Time to focus!"
+        done
+        
+        # update previous goal
+        previous_goal="$current_goal"
+
+        get_input "Focus Duration (min)" "$suggest_focus" current_focus_time
+        
+        if [ "$current_focus_time" -gt 0 ]; then
+            log_session "$current_goal" "$current_focus_time"
+            
+            # focus timer
+            echo -e "\n>>> Starting Focus: $current_goal ($current_focus_time min)"
+            notify "normal" "Starting Focus: $current_goal"
+            countdown $(minutes_to_seconds $current_focus_time)
+            
+            total_elapsed=$((total_elapsed + current_focus_time))
+            notify_sound $FOCUS_END_SOUND
+            notify "critical" "Focus complete! Time to take a break."
         fi
+
+        # break logic
+        get_input "Take a break?" "y" take_break
+        if [ "$take_break" != "n" ]; then
+             get_input "Break Duration (min)" "$suggest_break" current_break_time
+             
+             echo -e "\n>>> Starting Break ($current_break_time min)"
+             countdown $(minutes_to_seconds $current_break_time)
+             
+             if [ "$current_break_time" -ge 20 ]; then
+                 notify_sound $LONG_BREAK_END_SOUND
+             else
+                 notify_sound $SHORT_BREAK_END_SOUND
+             fi
+             notify "critical" "Break over! Ready to focus?"
+        fi
+        
+        # wait for next loop
+        echo -e "\n"
+        read -p "Press Enter to continue to next session..."
+        echo -ne "\033[1A\033[2K" # clear the prompt line
+        echo -ne "\033[1A\033[2K" # clear the empty line
     done
 }
 
-# Start the Pomodoro timer
+# start the pomodoro timer
 pomodoro
