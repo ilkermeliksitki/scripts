@@ -271,7 +271,7 @@ function pomodoro {
             fi
             
             echo "Goal too short. Please be more specific (min 10 chars)."
-            notify_sound $SHORT_BREAK_END_SOUND
+            notify_sound $NAG_SOUND
         done
         
         # update previous goal
