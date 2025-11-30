@@ -206,7 +206,7 @@ function get_phase_suggestion {
         echo "50 10 Deep_Work"
     elif [ $elapsed -lt 360 ]; then
         # prevent infinite loop
-        echo "25 20 Taper_Down_&_Reset"
+        echo "30 10 Taper_Down"
     else
         # after 6 hours, switch to maintenance mode to maintain quality
         echo "25 5 Maintenance_Mode"
