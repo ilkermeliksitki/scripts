@@ -233,7 +233,7 @@ test_log_session() {
   # Override SESSION_LOG for testing
   SESSION_LOG="test_session.log"
 
-  log_session "Focus" "Test Goal" "25"
+  log_session "Focus" "Test Goal" "25" "4" "Deep_Work" "50" "10"
 
   if [[ -f "$SESSION_LOG" ]]; then
     log_pass "Log file created."
@@ -242,11 +242,14 @@ test_log_session() {
     return
   fi
 
-  if grep -q "Type: Focus | Description: Test Goal | Duration: 25m" "$SESSION_LOG"; then
+  # Verify full log format
+  local expected="Type: Focus | Description: Test Goal | Duration: 25m | Energy: 4 | Phase: Deep_Work | Suggested: 50m/10m"
+  if grep -q "$expected" "$SESSION_LOG"; then
     log_pass "Log entry content correct."
   else
     log_fail "Log entry content incorrect."
-    cat "$SESSION_LOG"
+    echo "Expected: $expected"
+    echo "Actual:   $(cat "$SESSION_LOG")"
   fi
 }
 

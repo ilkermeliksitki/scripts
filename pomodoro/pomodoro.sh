@@ -164,8 +164,12 @@ function log_session {
     local type="$1"
     local description="$2"
     local duration="$3"
+    local energy="$4"
+    local phase="$5"
+    local suggested_focus="$6"
+    local suggested_break="$7"
     local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-    echo "$timestamp | Type: $type | Description: $description | Duration: ${duration}m" >> "$SESSION_LOG"
+    echo "$timestamp | Type: $type | Description: $description | Duration: ${duration}m | Energy: $energy | Phase: $phase | Suggested: ${suggested_focus}m/${suggested_break}m" >> "$SESSION_LOG"
 }
 
 # determine phase and suggested times based on elapsed minutes
@@ -285,7 +289,7 @@ function pomodoro {
         get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
         
         if [ "$current_focus_time" -gt 0 ]; then
-            log_session "Focus" "$current_goal" "$current_focus_time"
+            log_session "Focus" "$current_goal" "$current_focus_time" "$current_energy" "$phase_name" "$suggest_focus" "$suggest_break"
             
             # focus timer
             echo -e "\n>>> $(color_blue "Focus"): $(color_green "$current_goal") ($current_focus_time min)"
@@ -305,7 +309,7 @@ function pomodoro {
              get_input "Break Activity" "rest" break_activity
              get_input "Break Duration (min)" "$suggest_break" current_break_time
              
-             log_session "Break" "$break_activity" "$current_break_time"
+             log_session "Break" "$break_activity" "$current_break_time" "$current_energy" "$phase_name" "$suggest_focus" "$suggest_break"
 
              echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
              countdown $(minutes_to_seconds $current_break_time)
@@ -324,7 +328,6 @@ function pomodoro {
     done
 }
 
-# start the pomodoro timer
 # start the pomodoro timer only if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     pomodoro
