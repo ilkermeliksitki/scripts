@@ -46,6 +46,12 @@ function minutes_to_seconds {
     echo $(($1 * 60))
 }
 
+# function to convert seconds to minutes
+function seconds_to_minutes {
+    # +30 for rounding up
+    echo $(( ($1 + 30) / 60 ))
+}
+
 # function to play sound notification
 function notify_sound {
     # play the sound at the background
