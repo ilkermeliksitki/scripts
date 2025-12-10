@@ -204,7 +204,7 @@ function get_phase_suggestion {
     fi
 
     # priority 4: standard ramp-up
-    if [ $elapsed -lt 120 ]; then
+    if [ $elapsed -lt 30 ]; then
         echo "25 5 High_Urgency"
     elif [ $elapsed -lt 240 ]; then
         echo "50 10 Deep_Work"
