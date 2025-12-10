@@ -2,6 +2,8 @@
 # test_pomodoro.sh
 # Automated test suite for pomodoro.sh
 
+set -euo pipefail  # Exit on error, undefined vars, and pipe failures
+
 POMODORO_SCRIPT="../pomodoro.sh"
 TEST_DIR="test_sandbox_$(date +%s)"
 
@@ -19,14 +21,14 @@ TESTS_FAILED=0
 MOCK_HOUR=10
 
 log_pass() {
-  ((TESTS_PASSED++))
+  TESTS_PASSED=$((TESTS_PASSED+1))
   if [[ "$VERBOSE" = true ]]; then
     echo -e "${GREEN}[PASS]${NC} $1"
   fi
 }
 
 log_fail() {
-  ((TESTS_FAILED++))
+  TESTS_FAILED=$((TESTS_FAILED+1))
   echo -e "${RED_BG_WHITE_TEXT}[FAIL]${NC} $1"
 }
 
@@ -105,6 +107,42 @@ test_minutes_to_seconds() {
     log_pass "0 minutes converted to 0 seconds."
   else
     log_fail "0 minutes conversion failed. Got: $result"
+  fi
+}
+
+test_seconds_to_minutes() {
+  log_test_header "seconds_to_minutes"
+
+  # Test rounding up (30s -> 1m)
+  local result=$(seconds_to_minutes 30)
+  if [[ "$result" -eq 1 ]]; then
+    log_pass "30 seconds rounded up to 1 minute."
+  else
+    log_fail "30 seconds conversion failed. Got: $result"
+  fi
+
+  # Test rounding down (29s -> 0m)
+  result=$(seconds_to_minutes 29)
+  if [[ "$result" -eq 0 ]]; then
+    log_pass "29 seconds rounded down to 0 minutes."
+  else
+    log_fail "29 seconds conversion failed. Got: $result"
+  fi
+
+  # Test exact minute (60s -> 1m)
+  result=$(seconds_to_minutes 60)
+  if [[ "$result" -eq 1 ]]; then
+    log_pass "60 seconds converted to 1 minute."
+  else
+    log_fail "60 seconds conversion failed. Got: $result"
+  fi
+
+  # Test rounding (90s -> 2m)
+  result=$(seconds_to_minutes 90)
+  if [[ "$result" -eq 2 ]]; then
+    log_pass "90 seconds rounded to 2 minutes."
+  else
+    log_fail "90 seconds conversion failed. Got: $result"
   fi
 }
 
@@ -325,6 +363,63 @@ test_get_valid_number() {
   fi
 }
 
+test_format_phase() {
+  log_test_header "format_phase"
+
+  local result=$(format_phase "The_Reset_(Burnout_Prev)")
+  if [[ "$result" == "The Reset (Burnout Prev)" ]]; then
+    log_pass "Phase formatting correct."
+  else
+    log_fail "Phase formatting failed. Got: $result"
+  fi
+}
+
+test_get_energy_level() {
+  log_test_header "get_energy_level"
+  setup_mocks
+
+  # Mock input "4"
+  echo "4" | (
+    get_energy_level energy_val
+    if [[ "$energy_val" -eq 4 ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Energy level input accepted."
+  else
+     log_fail "Energy level input failed."
+  fi
+}
+
+test_get_goal() {
+  log_test_header "get_goal"
+  setup_mocks
+
+  # Mock input "short" then "long_enough_goal"
+  # We need to simulate the loop.
+  # get_goal calls get_input.
+  # We can pipe multiple lines.
+
+  (echo "short"; echo "long_enough_goal") | (
+    get_goal "prev" goal_val > /dev/null
+    if [[ "$goal_val" == "long_enough_goal" ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Goal validation accepted valid goal."
+  else
+     log_fail "Goal validation failed."
+  fi
+}
+
 print_summary() {
   echo "---------------------------------------------------"
   echo "Test Summary"
@@ -357,12 +452,16 @@ done
 setup
 setup_mocks
 test_minutes_to_seconds
+test_seconds_to_minutes
 test_get_phase_suggestion
 test_log_session
 test_log_session_break
 test_get_valid_number
 test_countdown
 test_get_input
+test_format_phase
+test_get_energy_level
+test_get_goal
 teardown
 
 print_summary
