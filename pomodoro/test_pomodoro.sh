@@ -253,6 +253,32 @@ test_log_session() {
   fi
 }
 
+test_log_session_break() {
+  log_test_header "log_session (Break)"
+
+  # Override SESSION_LOG for testing
+  SESSION_LOG="test_session_break.log"
+
+  log_session "Break" "Coffee" "5" "3" "Deep_Work" "50" "10"
+
+  if [[ -f "$SESSION_LOG" ]]; then
+    log_pass "Break Log file created."
+  else
+    log_fail "Break Log file NOT created."
+    return
+  fi
+
+  # Verify full log format
+  local expected="Type: Break | Description: Coffee | Duration: 5m | Energy: 3 | Phase: Deep_Work | Suggested: 50m/10m"
+  if grep -q "$expected" "$SESSION_LOG"; then
+    log_pass "Break Log entry content correct."
+  else
+    log_fail "Break Log entry content incorrect."
+    echo "Expected: $expected"
+    echo "Actual:   $(cat "$SESSION_LOG")"
+  fi
+}
+
 test_get_valid_number() {
   log_test_header "get_valid_number"
 
@@ -333,6 +359,7 @@ setup_mocks
 test_minutes_to_seconds
 test_get_phase_suggestion
 test_log_session
+test_log_session_break
 test_get_valid_number
 test_countdown
 test_get_input

@@ -289,16 +289,33 @@ function pomodoro {
         get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
         
         if [ "$current_focus_time" -gt 0 ]; then
-            log_session "Focus" "$current_goal" "$current_focus_time" "$current_energy" "$phase_name" "$suggest_focus" "$suggest_break"
-            
+            # capture start time
+            local start_time=$(date +%s)
+
             # focus timer
             echo -e "\n>>> $(color_blue "Focus"): $(color_green "$current_goal") ($current_focus_time min)"
             notify "normal" "Focus: $current_goal"
             countdown $(minutes_to_seconds $current_focus_time)
             
-            total_elapsed=$((total_elapsed + current_focus_time))
+            # capture end time
+            local end_time=$(date +%s)
+
             notify_sound $FOCUS_END_SOUND
             notify "critical" "Focus complete! Time to take a break."
+
+            # calculate actual duration in minutes
+            local duration_seconds=$((end_time - start_time))
+            local actual_duration=$(minutes_to_seconds $duration_seconds)
+
+            # post-mortem logging
+            echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
+            get_input "Actual Goal" "$current_goal" final_goal
+
+            # update the elapsed time with reality, not the plan
+            total_elapsed=$((total_elapsed + actual_duration))
+
+            # log the reality
+            log_session "Focus" "$final_goal" "$actual_duration" "$current_energy" "$display_phase"
         fi
 
         # break logic
@@ -307,21 +324,37 @@ function pomodoro {
 
         if [ "$take_break" != "n" ]; then
              get_input "Break Activity" "rest" break_activity
-             get_input "Break Duration (min)" "$suggest_break" current_break_time
+             get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
              
-             log_session "Break" "$break_activity" "$current_break_time" "$current_energy" "$phase_name" "$suggest_focus" "$suggest_break"
-
              echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
+
+             # capture start time
+             local break_start_time=$(date +%s)
+
              countdown $(minutes_to_seconds $current_break_time)
-             
+
+             # capture end time
+             local break_end_time=$(date +%s)
+
              if [ "$current_break_time" -ge 20 ]; then
                  notify_sound $LONG_BREAK_END_SOUND
              else
                  notify_sound $SHORT_BREAK_END_SOUND
              fi
              notify "critical" "Break over! Ready to focus?"
+
+             # calculate actual duration
+             local break_duration_seconds=$((break_end_time - break_start_time))
+             local actual_break_duration=$(minutes_to_seconds $break_duration_seconds)
+
+             # post-mortem logging for break
+             echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
+             get_input "Actual Break Activity" "$break_activity" final_break_activity
+
+             # log the break
+             log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase"
         fi
-        
+
         # wait for next loop
         get_input "Next session?" "y" next_session
         clear_lines 1
