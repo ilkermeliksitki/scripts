@@ -405,7 +405,7 @@ test_get_goal() {
   # We can pipe multiple lines.
 
   (echo "short"; echo "long_enough_goal") | (
-    get_goal "prev" goal_val > /dev/null
+    get_goal "Prompt" "prev" goal_val "true" > /dev/null
     if [[ "$goal_val" == "long_enough_goal" ]]; then
        exit 0
     else

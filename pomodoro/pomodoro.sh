@@ -285,31 +285,33 @@ function phase_specific_action {
     fi
 }
 
-# helper to get focus goal
+# helper to get validated goal input
 function get_goal {
-    local previous_goal="$1"
-    local goal_var="$2"
-    local _input_goal=""
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local allow_exit="${4:-false}"
+    local input_val=""
 
     while true; do
-        get_input "$(color_yellow "Enter Focus Goal (or 'exit' to quit)")" "$previous_goal" _input_goal
+        get_input "$prompt" "$default" input_val
 
-        if [ "$_input_goal" == "exit" ]; then
+        if [ "$allow_exit" == "true" ] && [ "$input_val" == "exit" ]; then
             echo "Goodbye!"
             exit 0
         fi
 
-        if [ ${#_input_goal} -ge 10 ]; then
+        if [ ${#input_val} -ge 10 ]; then
             break
         fi
 
         echo "Goal too short. Please be more specific (min 10 chars)."
         notify_sound $NAG_SOUND
-        sleep 1
+        sleep 1 # so that the user see the message.
         clear_lines 2
     done
 
-    eval $goal_var="'$_input_goal'"
+    eval $var_name="'$input_val'"
 }
 
 # helper to run focus session
@@ -335,15 +337,7 @@ function run_focus {
 
     # post-mortem logging
     echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
-    while true; do
-        get_input "Actual Goal" "$goal" final_goal
-        if [ ${#final_goal} -ge 10 ]; then
-            break
-        fi
-        echo "Goal too short. Please be more specific (min 10 chars)."
-        sleep 1
-        clear_lines 2
-    done
+    get_goal "Actual Goal" "$goal" final_goal "false"
     clear_lines 5
 
     # capture end time
@@ -436,7 +430,7 @@ function pomodoro {
         phase_specific_action "$phase_name" "$display_phase" "$total_elapsed" "$suggest_focus" "$suggest_break"
         
         # goal setting
-        get_goal "$previous_goal" current_goal
+        get_goal "$(color_yellow "Enter Focus Goal (or 'exit' to quit)")" "$previous_goal" current_goal "true"
         
         # update previous goal
         previous_goal="$current_goal"
