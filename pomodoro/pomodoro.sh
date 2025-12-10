@@ -321,7 +321,7 @@ function pomodoro {
             total_elapsed=$((total_elapsed + actual_duration))
 
             # log the reality
-            log_session "Focus" "$final_goal" "$actual_duration" "$current_energy" "$display_phase"
+            log_session "Focus" "$final_goal" "$actual_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
         fi
 
         # break logic
@@ -358,7 +358,7 @@ function pomodoro {
              get_input "Actual Break Activity" "$break_activity" final_break_activity
 
              # log the break
-             log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase"
+             log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
         fi
 
         # wait for next loop
