@@ -234,6 +234,19 @@ function color_52     { echo -ne "\033[1;52m$1\033[0m"; }
 function color_yellow { echo -ne "\033[1;93m$1\033[0m"; }
 function color_cyan   { echo -ne "\033[1;96m$1\033[0m"; }
 
+# helper to print final status after session
+function print_final_status {
+    local type="$1"
+    local description="$2"
+    local duration="$3"
+
+    if [ "$type" == "Focus" ]; then
+        echo -e "\n>>> $(color_blue "$type"): $(color_green "$description") ($duration min)"
+    else
+        echo -e "\n>>> $(color_brown "$type"): $(color_green "$description") ($duration min)"
+    fi
+}
+
 # Clear lines helper
 function clear_lines {
     local count=${1:-1}
@@ -293,6 +306,7 @@ function pomodoro {
         previous_goal="$current_goal"
 
         get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
+        clear_lines 2
         
         if [ "$current_focus_time" -gt 0 ]; then
             # capture start time
@@ -308,7 +322,16 @@ function pomodoro {
 
             # post-mortem logging
             echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
-            get_input "Actual Goal" "$current_goal" final_goal
+            while true; do
+                get_input "Actual Goal" "$current_goal" final_goal
+                if [ ${#final_goal} -ge 10 ]; then
+                    break
+                fi
+                echo "Goal too short. Please be more specific (min 10 chars)."
+                sleep 1
+                clear_lines 2
+            done
+            clear_lines 5
 
             # capture end time
             local end_time=$(date +%s)
@@ -316,6 +339,9 @@ function pomodoro {
             # calculate actual duration in minutes
             local duration_seconds=$((end_time - start_time))
             local actual_duration=$(seconds_to_minutes $duration_seconds)
+
+            # print final status
+            print_final_status "Focus" "$final_goal" "$actual_duration"
 
             # update the elapsed time with reality, not the plan
             total_elapsed=$((total_elapsed + actual_duration))
@@ -326,6 +352,7 @@ function pomodoro {
 
         get_input "Break Activity" "rest" break_activity
         get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
+        clear_lines 2
 
         echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
 
@@ -344,6 +371,7 @@ function pomodoro {
         # post-mortem logging for break
         echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
         get_input "Actual Break Activity" "$break_activity" final_break_activity
+        clear_lines 5
 
         # capture end time
         local break_end_time=$(date +%s)
@@ -351,6 +379,9 @@ function pomodoro {
         # calculate actual duration
         local break_duration_seconds=$((break_end_time - break_start_time))
         local actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
+
+        # print final status
+        print_final_status "Break" "$final_break_activity" "$actual_break_duration"
 
         # log the break
         log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
