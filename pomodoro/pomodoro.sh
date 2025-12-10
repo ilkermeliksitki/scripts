@@ -324,42 +324,36 @@ function pomodoro {
             log_session "Focus" "$final_goal" "$actual_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
         fi
 
-        # break logic
-        get_input "Take a break?" "y" take_break
-        clear_lines 1
+        get_input "Break Activity" "rest" break_activity
+        get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
 
-        if [ "$take_break" != "n" ]; then
-             get_input "Break Activity" "rest" break_activity
-             get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
-             
-             echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
+        echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
 
-             # capture start time
-             local break_start_time=$(date +%s)
+        # capture start time
+        local break_start_time=$(date +%s)
 
-             countdown $(minutes_to_seconds $current_break_time)
+        countdown $(minutes_to_seconds $current_break_time)
 
-             if [ "$current_break_time" -ge 20 ]; then
-                 notify_sound $LONG_BREAK_END_SOUND
-             else
-                 notify_sound $SHORT_BREAK_END_SOUND
-             fi
-             notify "critical" "Break over! Ready to focus?"
-
-             # post-mortem logging for break
-             echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
-             get_input "Actual Break Activity" "$break_activity" final_break_activity
-
-             # capture end time
-             local break_end_time=$(date +%s)
-
-             # calculate actual duration
-             local break_duration_seconds=$((break_end_time - break_start_time))
-             local actual_break_duration=$(minutes_to_seconds $break_duration_seconds)
-
-             # log the break
-             log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
+        if [ "$current_break_time" -ge 20 ]; then
+            notify_sound $LONG_BREAK_END_SOUND
+        else
+            notify_sound $SHORT_BREAK_END_SOUND
         fi
+        notify "critical" "Break over! Ready to focus?"
+
+        # post-mortem logging for break
+        echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
+        get_input "Actual Break Activity" "$break_activity" final_break_activity
+
+        # capture end time
+        local break_end_time=$(date +%s)
+
+        # calculate actual duration
+        local break_duration_seconds=$((break_end_time - break_start_time))
+        local actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
+
+        # log the break
+        log_session "Break" "$final_break_activity" "$actual_break_duration" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break"
 
         # wait for next loop
         get_input "Next session?" "y" next_session
