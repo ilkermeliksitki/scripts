@@ -307,7 +307,7 @@ function get_goal {
 
         echo "Goal too short. Please be more specific (min 10 chars)."
         notify_sound $NAG_SOUND
-        sleep 1 # so that the user see the message.
+        sleep 1 # so that the user sees the message.
         clear_lines 2
     done
 
