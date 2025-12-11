@@ -106,7 +106,7 @@ SESSION_LOG="$SCRIPT_DIR/session_log.log"
 function get_input {
     local prompt="$1"
     local default="$2"
-    local var_name="$3"
+    local -n __input_ref="$3"
     local input=""
     local timeout=${4:-60}
 
@@ -133,14 +133,14 @@ function get_input {
     # strip ansi color codes from input to ensure we get clean values
     input=$(echo "$input" | sed 's/\x1b\[[0-9;]*m//g')
     
-    eval $var_name="'$input'"
+    __input_ref="$input"
 }
 
 # helper to get valid numeric input
 function get_valid_number {
     local prompt="$1"
     local default="$2"
-    local var_name="$3"
+    local -n __number_ref="$3"
     local min="$4"
     local max="$5"
     local val=""
@@ -162,7 +162,7 @@ function get_valid_number {
         fi
     done
 
-    eval $var_name="'$val'"
+    __number_ref="$val"
 }
 
 # log session to file
@@ -257,9 +257,9 @@ function clear_lines {
 
 # helper to get energy level
 function get_energy_level {
-    local energy_var="$1"
+    local -n __energy_ref="$1"
     get_valid_number "$(color_yellow "Current Energy Level (1=Drained, 5=Flow)")" "$(color_52 "3")" _energy_val 1 5
-    eval $energy_var="'$_energy_val'"
+    __energy_ref="$_energy_val"
 }
 
 # helper to format phase name
@@ -289,7 +289,7 @@ function phase_specific_action {
 function get_goal {
     local prompt="$1"
     local default="$2"
-    local var_name="$3"
+    local -n __goal_ref="$3"
     local allow_exit="${4:-false}"
     local input_val=""
 
@@ -311,7 +311,7 @@ function get_goal {
         clear_lines 2
     done
 
-    eval $var_name="'$input_val'"
+    __goal_ref="$input_val"
 }
 
 # helper to run focus session
@@ -352,9 +352,9 @@ function run_focus {
 
     # update the elapsed time with reality, not the plan
     # we need to read current value, add, and write back
-    # using indirect reference
-    local current_elapsed=${!elapsed_var}
-    eval $elapsed_var=$((current_elapsed + actual_duration))
+    # using nameref
+    local -n __elapsed_ref="$7"
+    __elapsed_ref=$((__elapsed_ref + actual_duration))
 
     # log the reality
     log_session "Focus" "$final_goal" "$actual_duration" "$energy" "$phase" "$suggest_focus" "$suggest_break"
