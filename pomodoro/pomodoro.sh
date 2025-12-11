@@ -322,7 +322,7 @@ function run_focus {
     local phase="$4"
     local suggest_focus="$5"
     local suggest_break="$6"
-    local elapsed_var="$7"
+    local -n __elapsed_ref="$7"
 
     # capture start time
     local start_time=$(date +%s)
@@ -353,7 +353,6 @@ function run_focus {
     # update the elapsed time with reality, not the plan
     # we need to read current value, add, and write back
     # using nameref
-    local -n __elapsed_ref="$7"
     __elapsed_ref=$((__elapsed_ref + actual_duration))
 
     # log the reality
