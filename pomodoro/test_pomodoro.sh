@@ -513,6 +513,63 @@ test_run_focus() {
   rm -f date_call_count
 }
 
+test_run_break() {
+  log_test_header "run_break"
+  setup_mocks
+
+  # mock dependencies
+  countdown() { return 0; }
+  export -f countdown
+
+  # mock inputs
+  get_input() {
+    local -n _input_ref="$3"
+    _input_ref="Resting"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _num_ref="$3"
+    _num_ref="5"
+  }
+  export -f get_valid_number
+
+  LOG_CALLED=false
+  log_session() {
+    LOG_CALLED=true
+  }
+  export -f log_session
+
+  # clean up state file if exists
+  rm -f date_call_count_break
+
+  # mock date for duration calc (5 min = 300s)
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break" ]]; then
+         echo 20000 > date_call_count_break
+         echo 20000
+       else
+         echo 20300
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+  rm -f date_call_count_break
+
+  run_break "5" "3" "Phase" "25" > /dev/null
+
+  if [[ "$LOG_CALLED" == "true" ]]; then
+    log_pass "Break session logged."
+  else
+    log_fail "Break session NOT logged."
+  fi
+
+  rm -f date_call_count_break
+}
+
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -558,6 +615,7 @@ test_get_energy_level
 test_get_goal
 test_print_final_status
 test_run_focus
+test_run_break
 teardown
 
 print_summary
