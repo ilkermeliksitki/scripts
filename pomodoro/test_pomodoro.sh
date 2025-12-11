@@ -440,6 +440,136 @@ test_print_final_status() {
   fi
 }
 
+test_run_focus() {
+  log_test_header "run_focus"
+  setup_mocks
+
+  # mock dependencies specific to run_focus
+  countdown() { return 0; }
+  export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+  notify() { return 0; }
+  export -f notify
+
+  # mock used functions by overriding them
+  get_goal() {
+    local -n _goal_ref="$3"
+    _goal_ref="Final Goal"
+  }
+  export -f get_goal
+
+  LOG_CALLED=false
+  log_session() {
+    LOG_CALLED=true
+  }
+  export -f log_session
+
+  # test execution
+  local elapsed_time=100
+
+  # run_focus "goal" "duration" "energy" "phase" "s_focus" "s_break" "__elapsed_ref"
+
+  # clean up state file if exists
+  rm -f date_call_count
+
+  # mock date to return start time, then end time (start + 1500s = 25m)
+  # date +%s is called twice: start_time and end_time.
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       # state file to track calls
+       if [[ ! -f "date_call_count" ]]; then
+         echo 10000 > date_call_count
+         echo 10000
+       else
+         # second call, return 10000 + 1500 (25 min)
+         echo 11500
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  # clean up the used state file
+  rm -f date_call_count
+
+  run_focus "Test Goal" "25" "5" "Flow" "60" "10" elapsed_time > /dev/null
+
+  # verify elapsed time updated (100 + 25 = 125)
+  if [[ "$elapsed_time" -eq 125 ]]; then
+    log_pass "Elapsed time updated correctly."
+  else
+    log_fail "Elapsed time update failed. Expected 125, got $elapsed_time"
+  fi
+
+  # verify log_session called
+  if [[ "$LOG_CALLED" == "true" ]]; then
+    log_pass "Session logged."
+  else
+    log_fail "Session NOT logged."
+  fi
+
+  rm -f date_call_count
+}
+
+test_run_break() {
+  log_test_header "run_break"
+  setup_mocks
+
+  # mock dependencies
+  countdown() { return 0; }
+  export -f countdown
+
+  # mock inputs
+  get_input() {
+    local -n _input_ref="$3"
+    _input_ref="Resting"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _num_ref="$3"
+    _num_ref="5"
+  }
+  export -f get_valid_number
+
+  LOG_CALLED=false
+  log_session() {
+    LOG_CALLED=true
+  }
+  export -f log_session
+
+  # clean up state file if exists
+  rm -f date_call_count_break
+
+  # mock date for duration calc (5 min = 300s)
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break" ]]; then
+         echo 20000 > date_call_count_break
+         echo 20000
+       else
+         echo 20300
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+  rm -f date_call_count_break
+
+  run_break "5" "3" "Phase" "25" > /dev/null
+
+  if [[ "$LOG_CALLED" == "true" ]]; then
+    log_pass "Break session logged."
+  else
+    log_fail "Break session NOT logged."
+  fi
+
+  rm -f date_call_count_break
+}
+
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -484,6 +614,8 @@ test_format_phase
 test_get_energy_level
 test_get_goal
 test_print_final_status
+test_run_focus
+test_run_break
 teardown
 
 print_summary
