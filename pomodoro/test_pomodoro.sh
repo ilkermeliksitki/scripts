@@ -2,6 +2,8 @@
 # test_pomodoro.sh
 # Automated test suite for pomodoro.sh
 
+set -euo pipefail  # Exit on error, undefined vars, and pipe failures
+
 POMODORO_SCRIPT="../pomodoro.sh"
 TEST_DIR="test_sandbox_$(date +%s)"
 
@@ -19,14 +21,14 @@ TESTS_FAILED=0
 MOCK_HOUR=10
 
 log_pass() {
-  ((TESTS_PASSED++))
+  TESTS_PASSED=$((TESTS_PASSED+1))
   if [[ "$VERBOSE" = true ]]; then
     echo -e "${GREEN}[PASS]${NC} $1"
   fi
 }
 
 log_fail() {
-  ((TESTS_FAILED++))
+  TESTS_FAILED=$((TESTS_FAILED+1))
   echo -e "${RED_BG_WHITE_TEXT}[FAIL]${NC} $1"
 }
 
@@ -105,6 +107,42 @@ test_minutes_to_seconds() {
     log_pass "0 minutes converted to 0 seconds."
   else
     log_fail "0 minutes conversion failed. Got: $result"
+  fi
+}
+
+test_seconds_to_minutes() {
+  log_test_header "seconds_to_minutes"
+
+  # Test rounding up (30s -> 1m)
+  local result=$(seconds_to_minutes 30)
+  if [[ "$result" -eq 1 ]]; then
+    log_pass "30 seconds rounded up to 1 minute."
+  else
+    log_fail "30 seconds conversion failed. Got: $result"
+  fi
+
+  # Test rounding down (29s -> 0m)
+  result=$(seconds_to_minutes 29)
+  if [[ "$result" -eq 0 ]]; then
+    log_pass "29 seconds rounded down to 0 minutes."
+  else
+    log_fail "29 seconds conversion failed. Got: $result"
+  fi
+
+  # Test exact minute (60s -> 1m)
+  result=$(seconds_to_minutes 60)
+  if [[ "$result" -eq 1 ]]; then
+    log_pass "60 seconds converted to 1 minute."
+  else
+    log_fail "60 seconds conversion failed. Got: $result"
+  fi
+
+  # Test rounding (90s -> 2m)
+  result=$(seconds_to_minutes 90)
+  if [[ "$result" -eq 2 ]]; then
+    log_pass "90 seconds rounded to 2 minutes."
+  else
+    log_fail "90 seconds conversion failed. Got: $result"
   fi
 }
 
@@ -253,6 +291,32 @@ test_log_session() {
   fi
 }
 
+test_log_session_break() {
+  log_test_header "log_session (Break)"
+
+  # Override SESSION_LOG for testing
+  SESSION_LOG="test_session_break.log"
+
+  log_session "Break" "Coffee" "5" "3" "Deep_Work" "50" "10"
+
+  if [[ -f "$SESSION_LOG" ]]; then
+    log_pass "Break Log file created."
+  else
+    log_fail "Break Log file NOT created."
+    return
+  fi
+
+  # Verify full log format
+  local expected="Type: Break | Description: Coffee | Duration: 5m | Energy: 3 | Phase: Deep_Work | Suggested: 50m/10m"
+  if grep -q "$expected" "$SESSION_LOG"; then
+    log_pass "Break Log entry content correct."
+  else
+    log_fail "Break Log entry content incorrect."
+    echo "Expected: $expected"
+    echo "Actual:   $(cat "$SESSION_LOG")"
+  fi
+}
+
 test_get_valid_number() {
   log_test_header "get_valid_number"
 
@@ -299,6 +363,214 @@ test_get_valid_number() {
   fi
 }
 
+test_format_phase() {
+  log_test_header "format_phase"
+
+  local result=$(format_phase "The_Reset_(Burnout_Prev)")
+  if [[ "$result" == "The Reset (Burnout Prev)" ]]; then
+    log_pass "Phase formatting correct."
+  else
+    log_fail "Phase formatting failed. Got: $result"
+  fi
+}
+
+test_get_energy_level() {
+  log_test_header "get_energy_level"
+  setup_mocks
+
+  # Mock input "4"
+  echo "4" | (
+    get_energy_level energy_val
+    if [[ "$energy_val" -eq 4 ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Energy level input accepted."
+  else
+     log_fail "Energy level input failed."
+  fi
+}
+
+test_get_goal() {
+  log_test_header "get_goal"
+  setup_mocks
+
+  # Mock input "short" then "long_enough_goal"
+  # We need to simulate the loop.
+  # get_goal calls get_input.
+  # We can pipe multiple lines.
+
+  (echo "short"; echo "long_enough_goal") | (
+    get_goal "Prompt" "prev" goal_val "true" > /dev/null
+    if [[ "$goal_val" == "long_enough_goal" ]]; then
+       exit 0
+    else
+       exit 1
+    fi
+  )
+
+  if [[ $? -eq 0 ]]; then
+     log_pass "Goal validation accepted valid goal."
+  else
+     log_fail "Goal validation failed."
+  fi
+}
+
+test_print_final_status() {
+  log_test_header "print_final_status"
+
+  # Capture output
+  local output=$(print_final_status "Focus" "My Goal" "25")
+
+  if [[ "$output" == *">>>"* ]] && [[ "$output" == *"Focus"* ]] && [[ "$output" == *"My Goal"* ]] && [[ "$output" == *"25 min"* ]]; then
+    log_pass "Focus status printed correctly."
+  else
+    log_fail "Focus status output incorrect. Got: $output"
+  fi
+
+  output=$(print_final_status "Break" "Coffee" "5")
+  if [[ "$output" == *">>>"* ]] && [[ "$output" == *"Break"* ]] && [[ "$output" == *"Coffee"* ]] && [[ "$output" == *"5 min"* ]]; then
+    log_pass "Break status printed correctly."
+  else
+    log_fail "Break status output incorrect. Got: $output"
+  fi
+}
+
+test_run_focus() {
+  log_test_header "run_focus"
+  setup_mocks
+
+  # mock dependencies specific to run_focus
+  countdown() { return 0; }
+  export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+  notify() { return 0; }
+  export -f notify
+
+  # mock used functions by overriding them
+  get_goal() {
+    local -n _goal_ref="$3"
+    _goal_ref="Final Goal"
+  }
+  export -f get_goal
+
+  LOG_CALLED=false
+  log_session() {
+    LOG_CALLED=true
+  }
+  export -f log_session
+
+  # test execution
+  local elapsed_time=100
+
+  # run_focus "goal" "duration" "energy" "phase" "s_focus" "s_break" "__elapsed_ref"
+
+  # clean up state file if exists
+  rm -f date_call_count
+
+  # mock date to return start time, then end time (start + 1500s = 25m)
+  # date +%s is called twice: start_time and end_time.
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       # state file to track calls
+       if [[ ! -f "date_call_count" ]]; then
+         echo 10000 > date_call_count
+         echo 10000
+       else
+         # second call, return 10000 + 1500 (25 min)
+         echo 11500
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  # clean up the used state file
+  rm -f date_call_count
+
+  run_focus "Test Goal" "25" "5" "Flow" "60" "10" elapsed_time > /dev/null
+
+  # verify elapsed time updated (100 + 25 = 125)
+  if [[ "$elapsed_time" -eq 125 ]]; then
+    log_pass "Elapsed time updated correctly."
+  else
+    log_fail "Elapsed time update failed. Expected 125, got $elapsed_time"
+  fi
+
+  # verify log_session called
+  if [[ "$LOG_CALLED" == "true" ]]; then
+    log_pass "Session logged."
+  else
+    log_fail "Session NOT logged."
+  fi
+
+  rm -f date_call_count
+}
+
+test_run_break() {
+  log_test_header "run_break"
+  setup_mocks
+
+  # mock dependencies
+  countdown() { return 0; }
+  export -f countdown
+
+  # mock inputs
+  get_input() {
+    local -n _input_ref="$3"
+    _input_ref="Resting"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _num_ref="$3"
+    _num_ref="5"
+  }
+  export -f get_valid_number
+
+  LOG_CALLED=false
+  log_session() {
+    LOG_CALLED=true
+  }
+  export -f log_session
+
+  # clean up state file if exists
+  rm -f date_call_count_break
+
+  # mock date for duration calc (5 min = 300s)
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break" ]]; then
+         echo 20000 > date_call_count_break
+         echo 20000
+       else
+         echo 20300
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+  rm -f date_call_count_break
+
+  run_break "5" "3" "Phase" "25" > /dev/null
+
+  if [[ "$LOG_CALLED" == "true" ]]; then
+    log_pass "Break session logged."
+  else
+    log_fail "Break session NOT logged."
+  fi
+
+  rm -f date_call_count_break
+}
+
+
 print_summary() {
   echo "---------------------------------------------------"
   echo "Test Summary"
@@ -331,11 +603,19 @@ done
 setup
 setup_mocks
 test_minutes_to_seconds
+test_seconds_to_minutes
 test_get_phase_suggestion
 test_log_session
+test_log_session_break
 test_get_valid_number
 test_countdown
 test_get_input
+test_format_phase
+test_get_energy_level
+test_get_goal
+test_print_final_status
+test_run_focus
+test_run_break
 teardown
 
 print_summary
