@@ -420,6 +420,27 @@ test_get_goal() {
   fi
 }
 
+test_print_final_status() {
+  log_test_header "print_final_status"
+
+  # Capture output
+  local output=$(print_final_status "Focus" "My Goal" "25")
+
+  if [[ "$output" == *">>>"* ]] && [[ "$output" == *"Focus"* ]] && [[ "$output" == *"My Goal"* ]] && [[ "$output" == *"25 min"* ]]; then
+    log_pass "Focus status printed correctly."
+  else
+    log_fail "Focus status output incorrect. Got: $output"
+  fi
+
+  output=$(print_final_status "Break" "Coffee" "5")
+  if [[ "$output" == *">>>"* ]] && [[ "$output" == *"Break"* ]] && [[ "$output" == *"Coffee"* ]] && [[ "$output" == *"5 min"* ]]; then
+    log_pass "Break status printed correctly."
+  else
+    log_fail "Break status output incorrect. Got: $output"
+  fi
+}
+
+
 print_summary() {
   echo "---------------------------------------------------"
   echo "Test Summary"
@@ -462,6 +483,7 @@ test_get_input
 test_format_phase
 test_get_energy_level
 test_get_goal
+test_print_final_status
 teardown
 
 print_summary
