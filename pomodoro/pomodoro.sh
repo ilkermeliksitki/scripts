@@ -48,7 +48,7 @@ function minutes_to_seconds {
 
 # function to convert seconds to minutes
 function seconds_to_minutes {
-    # +30 for rounding up
+    # +30 for rounding to nearest minute
     echo $(( ($1 + 30) / 60 ))
 }
 
