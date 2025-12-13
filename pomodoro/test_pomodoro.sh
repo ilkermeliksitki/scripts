@@ -468,7 +468,7 @@ test_run_focus() {
   # test execution
   local elapsed_time=100
 
-  # run_focus "goal" "duration" "energy" "phase" "s_focus" "s_break" "__elapsed_ref"
+  # run_focus "goal" "duration" "energy" "phase" "s_focus" "s_break" "__elapsed_ref" "__goal_ref"
 
   # clean up state file if exists
   rm -f date_call_count
@@ -494,13 +494,21 @@ test_run_focus() {
   # clean up the used state file
   rm -f date_call_count
 
-  run_focus "Test Goal" "25" "5" "Flow" "60" "10" elapsed_time > /dev/null
+  local current_goal="Test Goal"
+  run_focus "$current_goal" "25" "5" "Flow" "60" "10" elapsed_time current_goal > /dev/null
 
   # verify elapsed time updated (100 + 25 = 125)
   if [[ "$elapsed_time" -eq 125 ]]; then
     log_pass "Elapsed time updated correctly."
   else
     log_fail "Elapsed time update failed. Expected 125, got $elapsed_time"
+  fi
+
+  # verify goal updated
+  if [[ "$current_goal" == "Final Goal" ]]; then
+    log_pass "Goal reference updated correctly to 'Final Goal'."
+  else
+    log_fail "Goal reference update failed. Expected 'Final Goal', got '$current_goal'"
   fi
 
   # verify log_session called

@@ -325,6 +325,7 @@ function run_focus {
     local suggest_focus="$5"
     local suggest_break="$6"
     local -n __elapsed_ref="$7"
+    local -n __goal_ref="$8"
 
     # capture start time
     local start_time=$(date +%s)
@@ -359,6 +360,9 @@ function run_focus {
 
     # log the reality
     log_session "Focus" "$final_goal" "$actual_duration" "$energy" "$phase" "$suggest_focus" "$suggest_break"
+
+    # return the final goal
+    __goal_ref="$final_goal"
 }
 
 # helper to run break session
@@ -440,8 +444,11 @@ function pomodoro {
         clear_lines 2
         
         if [ "$current_focus_time" -gt 0 ]; then
-            run_focus "$current_goal" "$current_focus_time" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break" total_elapsed
+            run_focus "$current_goal" "$current_focus_time" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break" total_elapsed current_goal
         fi
+
+        # update previous goal with the potentially changed goal from the session
+        previous_goal="$current_goal"
 
         run_break "$suggest_break" "$current_energy" "$display_phase" "$suggest_focus"
 
