@@ -212,13 +212,15 @@ function get_phase_suggestion {
     # priority 4: standard ramp-up
     if [ $elapsed -lt 30 ]; then
         echo "25 5 High_Urgency"
-    elif [ $elapsed -lt 240 ]; then
-        echo "50 10 Deep_Work"
+
+    # extend the deep work to 6 hours
     elif [ $elapsed -lt 360 ]; then
-        # prevent infinite loop
+        echo "50 10 Deep_Work"
+
+    # taper down happens after 6 hours
+    elif [ $elapsed -lt 420 ]; then
         echo "30 10 Taper_Down"
     else
-        # after 6 hours, switch to maintenance mode to maintain quality
         echo "25 5 Maintenance_Mode"
     fi
 }
