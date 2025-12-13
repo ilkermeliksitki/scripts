@@ -434,21 +434,25 @@ function pomodoro {
         # phase specific action
         phase_specific_action "$phase_name" "$display_phase" "$total_elapsed" "$suggest_focus" "$suggest_break"
         
-        # goal setting
-        get_goal "$(color_yellow "Enter Focus Goal (or 'exit' to quit)")" "$previous_goal" current_goal "true"
-        
-        # update previous goal
-        previous_goal="$current_goal"
 
-        get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 1
-        clear_lines 2
         
-        if [ "$current_focus_time" -gt 0 ]; then
-            run_focus "$current_goal" "$current_focus_time" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break" total_elapsed current_goal
+        if [ "$suggest_focus" -gt 0 ]; then
+            # goal setting
+            get_goal "$(color_yellow "Enter Focus Goal (or 'exit' to quit)")" "$previous_goal" current_goal "true"
+
+            # update previous goal
+            previous_goal="$current_goal"
+
+            get_valid_number "Focus Duration (min)" "$suggest_focus" current_focus_time 0
+            clear_lines 2
+
+            if [ "$current_focus_time" -gt 0 ]; then
+                run_focus "$current_goal" "$current_focus_time" "$current_energy" "$display_phase" "$suggest_focus" "$suggest_break" total_elapsed current_goal
+            fi
+
+            # update previous goal with the potentially changed goal from the session
+            previous_goal="$current_goal"
         fi
-
-        # update previous goal with the potentially changed goal from the session
-        previous_goal="$current_goal"
 
         run_break "$suggest_break" "$current_energy" "$display_phase" "$suggest_focus"
 
