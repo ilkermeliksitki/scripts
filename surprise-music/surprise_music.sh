@@ -4,7 +4,9 @@
 MIN_WAIT=240
 MAX_WAIT=600
 DEFAULT_DIR="$HOME/Music"
-PLAY_DURATION=600 # 10 minutes
+PLAY_DURATION=80
+FADE_IN_DURATION=30
+FADE_OUT_DURATION=30
 
 # Use last volume or fallback to 50
 VOLUME_FILE="/tmp/mpv-volume"
@@ -63,8 +65,27 @@ play_with_tracking() {
             fi
         fi
 
-        # apply fade-in starting at the correct seek position
-        echo '{ "command": ["set_property", "af", "afade=t=in:st='$SEEK_POS':d=10"] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
+        # determine playback end time (absolute file time)
+        # it stops at SEEK_POS + PLAY_DURATION or DURATION_INT, whichever is smaller
+        PLAY_END_TIME=$(( SEEK_POS + PLAY_DURATION ))
+
+        # check against duration (using integer comparison)
+        if (( PLAY_END_TIME > DURATION_INT )); then
+             PLAY_END_TIME=$DURATION_INT
+        fi
+
+        # calculate fade-out start
+        FADE_OUT_START=$(( PLAY_END_TIME - FADE_OUT_DURATION ))
+        # ensure non-negative
+        if (( FADE_OUT_START < 0 )); then FADE_OUT_START=0; fi
+
+        # construct filter string with fade-in and universal fade-out
+        FADE_IN_STRING="afade=t=in:st=${SEEK_POS}:d=${FADE_IN_DURATION}"
+        FADE_OUT_STRING="afade=t=out:st=${FADE_OUT_START}:d=${FADE_OUT_DURATION}"
+        AF_STRING="$FADE_IN_STRING,$FADE_OUT_STRING"
+
+        # apply filters
+        echo '{ "command": ["set_property", "af", "'"$AF_STRING"'"] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
 
         # unpause
         echo '{ "command": ["set_property", "pause", false] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
