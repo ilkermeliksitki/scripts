@@ -28,7 +28,7 @@ play_with_tracking() {
     # ensuring old socket is removed
     [[ -e "$SOCKET" ]] && rm "$SOCKET"
 
-    mpv --no-video --input-ipc-server="$SOCKET" --volume="$LAST_VOLUME" "$1" &
+    mpv --no-video --input-ipc-server="$SOCKET" --volume="$LAST_VOLUME" --af="afade=t=in:st=0:d=10" "$1" &
 
     MPV_PID=$!
 
