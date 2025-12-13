@@ -4,6 +4,7 @@
 MIN_WAIT=240
 MAX_WAIT=600
 DEFAULT_DIR="$HOME/Music"
+PLAY_DURATION=600 # 10 minutes
 
 # Use last volume or fallback to 50
 VOLUME_FILE="/tmp/mpv-volume"
@@ -28,7 +29,8 @@ play_with_tracking() {
     # ensuring old socket is removed
     [[ -e "$SOCKET" ]] && rm "$SOCKET"
 
-    mpv --no-video --input-ipc-server="$SOCKET" --volume="$LAST_VOLUME" --af="afade=t=in:st=0:d=10" "$1" &
+    # Start mpv paused to allow seeking before playback
+    mpv --no-video --input-ipc-server="$SOCKET" --volume="$LAST_VOLUME" --pause "$1" &
 
     MPV_PID=$!
 
@@ -40,8 +42,47 @@ play_with_tracking() {
         sleep 0.5
     done
 
-    # track volume changes periodically
+    # check duration, seek, and apply fade
+    SEEK_POS=0
+    if [[ -S "$SOCKET" ]]; then
+        DURATION=$(echo '{ "command": ["get_property", "duration"] }' | socat - "$SOCKET" 2>/dev/null | jq -r .data)
+
+        # check if DURATION is a valid number
+        if [[ "$DURATION" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            # convert float to int for comparison
+            DURATION_INT=${DURATION%.*}
+
+            if (( DURATION_INT > PLAY_DURATION )); then
+                # calculate max seek position: duration - play_limit
+                MAX_SEEK=$(( DURATION_INT - PLAY_DURATION ))
+                if (( MAX_SEEK > 0 )); then
+                    SEEK_POS=$(( RANDOM % MAX_SEEK ))
+                    echo "⏩ Long file detected ($DURATION_INT s). Seeking to $SEEK_POS s."
+                    echo '{ "command": ["seek", '$SEEK_POS', "absolute"] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
+                fi
+            fi
+        fi
+
+        # apply fade-in starting at the correct seek position
+        echo '{ "command": ["set_property", "af", "afade=t=in:st='$SEEK_POS':d=10"] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
+
+        # unpause
+        echo '{ "command": ["set_property", "pause", false] }' | socat - "$SOCKET" 2>/dev/null >/dev/null
+    fi
+
+    START_TIME=$(date +%s)
+
+    # track volume changes and enforce duration limit
     while kill -0 "$MPV_PID" 2>/dev/null; do
+        CURRENT_TIME=$(date +%s)
+        ELAPSED=$(( CURRENT_TIME - START_TIME ))
+
+        if (( ELAPSED >= PLAY_DURATION )); then
+            echo "⏰ Time limit reached ($PLAY_DURATION s). Stopping playback."
+            kill "$MPV_PID" 2>/dev/null
+            break
+        fi
+
         if [[ -S "$SOCKET" ]]; then
             VOL=$(echo '{ "command": ["get_property", "volume"] }' | socat - "$SOCKET" 2>/dev/null | jq -r .data)
             if [[ "$VOL" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
