@@ -409,15 +409,50 @@ function run_break {
     log_session "Break" "$final_break_activity" "$actual_break_duration" "$energy" "$phase" "$suggest_focus" "$suggest_break"
 }
 
+# helper to calculate total elapsed focus time for today from log
+function calculate_daily_elapsed_focused {
+    local today=$(date "+%Y-%m-%d")
+    local current_hour=$(date +%H)
+    local grep_pattern="^$today"
+    local total_minutes=0
+
+    # if it's late night (before 4 AM), count it as part of yesterday
+    # so we include sessions from yesterday as well
+    if [ "$current_hour" -lt 4 ]; then
+        local yesterday=$(date -d "yesterday" "+%Y-%m-%d")
+        grep_pattern="^$today|^$yesterday"
+    fi
+
+    if [ -f "$SESSION_LOG" ]; then
+        # grep for relevant dates and "Type: Focus"
+        # then extract duration ("Duration: 25m" -> remove 'm' -> sum)
+        local sum=$(grep -E "$grep_pattern" "$SESSION_LOG" \
+            | grep "Type: Focus" \
+            | grep -o "Duration: [0-9]*m" \
+            | grep -o "[0-9]*" \
+            | awk '{ s += $1 } END { print s }' # loop over, and "print/return" the sum
+        )
+
+        if [ -n "$sum" ]; then
+            total_minutes=$sum
+        fi
+    fi
+
+    echo "$total_minutes"
+}
+
 # main pomodoro loop
 function pomodoro {
-    local total_elapsed=0
+    local total_elapsed=$(calculate_daily_elapsed_focused)
     local previous_goal=""
     local current_energy=""
 
     check_dependencies
 
     echo "$(color_36 "Welcome to the Adaptive Pomodoro Timer!")"
+    if [ "$total_elapsed" -gt 0 ]; then
+        echo "$(color_purple "Restored accumulated focus time: ${total_elapsed}m")"
+    fi
     
     while true; do
         echo -e "\n========================================"
