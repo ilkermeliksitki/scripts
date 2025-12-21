@@ -16,3 +16,9 @@ focusprompt/.idea/
 focusprompt/*.log
 focusprompt/*.tmp
 focusprompt/dependency-reduced-pom.xml
+
+## photoanki
+photo-to-anki/db
+
+## seal
+seal/test_sandbox_*
