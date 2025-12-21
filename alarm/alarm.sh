@@ -23,6 +23,6 @@ echo "alarm set for $time_secs seconds..."
 sleep "$time_secs"
 
 # notify
-notify-send "⏰ Alarm" "$msg" &
+notify-send --urgency "critical" "⏰ Alarm" "$msg" &
 paplay /home/melik/Documents/projects/scripts/alarm/voice.mp3 2>/dev/null
 
