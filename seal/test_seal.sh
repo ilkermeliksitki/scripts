@@ -70,7 +70,7 @@ setup_gpg_mock() {
     local input=""
     local mode=""
     
-    while [[ $# > 0 ]]; do
+    while [[ $# -gt 0 ]]; do
       case "$1" in
         --output)
           output="$2"
@@ -323,7 +323,7 @@ print_summary() {
   echo "Test Summary"
   echo "---------------------------------------------------"
   echo -e "Passed: ${GREEN}${TESTS_PASSED}${NC}"
-  if [[ "$TESTS_FAILED" > 0 ]]; then
+  if [[ "$TESTS_FAILED" -gt 0 ]]; then
     echo -e "Failed: ${RED_BG_WHITE_TEXT}${TESTS_FAILED}${NC}"
     echo "---------------------------------------------------"
     exit 1
