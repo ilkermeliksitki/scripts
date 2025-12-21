@@ -38,7 +38,11 @@ DURATION_SECONDS=$((DURATION_MINUTES * 60))
 ffmpeg -y \
   -f x11grab -r 30 -s "${W}x${H}" -i ":0.0+$X,$Y" \
   -f pulse -i "$(pactl list short sources | grep monitor | awk '{print $2}')" \
-  -c:v libx264 -preset ultrafast -movflags +faststart "$TMP_FILE" \
+#  -f pulse -i "$(pactl list short sources | grep -v monitor | awk '{print $2}')" \
+  -filter_complex "[1:a][2:a]amix=inputs=2:duration=longest[aout]" \
+  -map 0:v -map "[aout]" \
+  -c:v libx264 -preset ultrafast -movflags +faststart \
+  "$TMP_FILE" \
   &> "$LOG_FILE" &
 
 FFMPEG_PID=$!
