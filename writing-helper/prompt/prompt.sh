@@ -14,6 +14,11 @@ case "$1" in
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Create anki cards prompt from image copied to clipboard"
         ;;
+    "teach_step_by_step")
+        prompt="I am having difficulty understanding this content. Help me understand it by explaining concepts step by step. Start with the foundational knowledge required for each concept, and gradually build up to more complex ideas. Where applicable, use simple examples or toy problems to illustrate each step. Ensure I fully grasp each part before moving on to the next."
+        echo -n "$prompt" | xclip -selection clipboard
+        notify_user "Teach step by step prompt copied to clipboard"
+        ;;
     "create_anki_cards")
         prompt="Alright. Now create some Anki cards."
         echo -n "$prompt" | xclip -selection clipboard
