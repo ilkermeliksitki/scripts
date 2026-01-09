@@ -9,8 +9,8 @@ notify_user() {
 }
 
 case "$1" in
-    "image2ankicards")
-        prompt="Extract the key concepts from the image and create clear, standalone Anki cards. Each card must be understandable on its own months later, without relying on the original image or external context. Focus only on the essential ideas the image is meant to teach. Keep cards modular, concise, and centered on a single learning point. If appropriate, include a small toy example to clarify the concept."
+    "modularAnkiCards")
+        prompt="Extract the key concepts and create clear, standalone Anki cards. Each card must be understandable on its own months later without relying on the original or external context during anki repetition. Focus only on the essential ideas that is meant to teach. Keep cards modular, concise, and centered on a single learning point. If appropriate, include a small toy example to clarify the concept."
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Create anki cards prompt from image copied to clipboard"
         ;;
