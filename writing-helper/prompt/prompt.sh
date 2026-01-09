@@ -10,7 +10,7 @@ notify_user() {
 
 case "$1" in
     "modularAnkiCards")
-        prompt="Extract the key concepts and create clear, standalone Anki cards. Each card must be understandable on its own months later without relying on the original or external context during anki repetition. Focus only on the essential ideas that is meant to teach. Keep cards modular, concise, and centered on a single learning point. If appropriate, include a small toy example to clarify the concept."
+        prompt="Extract the key concepts and create clear, standalone Anki cards. Each card must be understandable on its own months later without relying on the original or external context during anki repetition. They even shouldn't rely on each other in terms of information because they can be repeated in a completely different times or sequence. Focus only on the essential ideas that is meant to teach. Keep cards modular, concise, and centered on a single learning point. If appropriate, include a small toy example to clarify the concept."
         echo -n "$prompt" | xclip -selection clipboard
         notify_user "Create anki cards prompt from image copied to clipboard"
         ;;
