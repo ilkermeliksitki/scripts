@@ -5,7 +5,7 @@ import javax.swing.JOptionPane;
 public class FocusUI {
 
     public static boolean popUpWarning() {
-        String message = ConfigUtil.getStringProperty("prompt.message", "Are you wandering off or doing the actionable task?");
+        String message = ConfigUtil.getStringProperty("prompt.message", "Do the actionable task, and look away from the screen for 20 seconds.");
         String header = ConfigUtil.getStringProperty("prompt.header", "Focus Check");
 
         Object[] options = {"I'm Focused", "Snooze"};
