@@ -317,6 +317,19 @@ test_ignore_file_and_folder_together() {
     fi
 }
 
+test_show_usage() {
+  log_test_header "show usage includes -i flag"
+
+  local usage_output
+  usage_output=$($SEAL_SCRIPT 2>&1 || true)
+
+  if echo "$usage_output" | grep -q -- "-i PATTERN"; then
+    log_pass "-i flag documented in usage output."
+  else
+    log_fail "-i flag NOT found in usage output."
+  fi
+}
+
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -353,6 +366,7 @@ test_ignore_flag
 test_ignore_folder_with_trailing_slash
 test_ignore_folder_without_trailing_slash
 test_ignore_file_and_folder_together
+test_show_usage
 teardown
 
 print_summary

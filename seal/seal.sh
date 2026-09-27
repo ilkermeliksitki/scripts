@@ -3,10 +3,12 @@
 #
 # Usage:
 #   To lock (archive & encrypt):
-#     ./seal.sh lock -r recipient@example.com [name]  # asymmetric encryption
-#     ./seal.sh lock -s [name]                        # symmetric encryption
+#     ./seal.sh lock -r recipient@example.com [-i pattern] [name]  # asymmetric encryption
+#     ./seal.sh lock -s [-i pattern] [name]                        # symmetric encryption
 #   To unlock (decrypt & extract):
 #     ./seal.sh unlock [name]
+#   To show help:
+#     ./seal.sh -h
 #
 # Mode: "lock" archives and encrypts the current directory.
 #       "unlock" decrypts and extracts the encrypted archive.
@@ -31,9 +33,15 @@ ARCHIVE=""
 
 show_usage() {
   echo "Usage: $SCRIPT_NAME {lock|unlock} [options] [name]"
+  echo "       $SCRIPT_NAME -h|--help"
+  echo
+  echo "General options:"
+  echo "  -h, --help      Show this help message"
+  echo
   echo "Options for lock mode:"
   echo "  -r RECIPIENT    Use asymmetric encryption with recipient's key"
   echo "  -s              Use symmetric encryption (password-based)"
+  echo "  -i PATTERN      Ignore file or directory (can be used multiple times)"
   echo "  name            Optional archive name (default: current directory name)"
   echo
   echo "Usage for unlock mode:"
@@ -204,8 +212,8 @@ core_decrypt() {
 # relies on dynamic scoping for variables: recipient, symmetric, excludes
 parse_lock_args() {
   local OPTIND
-  # ":r:si:" means r: requires an argument, s: doesn't require an argument, i: requires an argument
-  while getopts ":r:si:" opt; do
+  # ":r:si:h-:" means r: requires an argument, s: doesn't require an argument, i: requires an argument, h: no argument, -: long options
+  while getopts ":r:si:h-:" opt; do
     case ${opt} in
       r )
         recipient="$OPTARG"
@@ -225,6 +233,23 @@ parse_lock_args() {
         ;;
       i )
         excludes+=("${OPTARG%/}")
+        ;;
+      h )
+        show_usage
+        exit 0
+        ;;
+      - )
+        case "$OPTARG" in
+          help )
+            show_usage
+            exit 0
+            ;;
+          * )
+            log_error "Invalid option: --$OPTARG"
+            show_usage
+            exit 1
+            ;;
+        esac
         ;;
       \? )
         log_error "Invalid option: -$OPTARG"
@@ -372,6 +397,11 @@ backup_encrypted_archive() {
 }
 
 cmd_unlock() {
+  if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_usage
+    exit 0
+  fi
+
   local archive_name="${1:-$DEFAULT_NAME}"
   ARCHIVE="${archive_name}.tar.gz"
   local encrypted_archive="${archive_name}.tar.gz.gpg"
@@ -415,6 +445,15 @@ cmd_unlock() {
 # ==============================================================================
 
 main() {
+  if [ $# -gt 0 ]; then
+    case "$1" in
+      -h|--help|help)
+        show_usage
+        exit 0
+        ;;
+    esac
+  fi
+
   check_root
   check_location
 
