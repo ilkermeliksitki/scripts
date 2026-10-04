@@ -26,6 +26,11 @@ LONG_BREAK_END_SOUND="$SCRIPT_DIR/sounds/long_break_end.wav"
 CELEBRATION_SOUND="$SCRIPT_DIR/sounds/celebration.wav"
 NAG_SOUND="$SCRIPT_DIR/sounds/nagging.wav"
 
+# volume settings (paplay range is 0 to 65536)
+# 75% reduced noise level (25% volume) for focus end sound so it is gentle and not distracting
+FOCUS_END_VOLUME=$((65536 * 25 / 100))
+
+
 # add dependency check for paplay and notify-send
 function check_dependencies {
     if ! command -v paplay &> /dev/null
@@ -54,8 +59,15 @@ function seconds_to_minutes {
 
 # function to play sound notification
 function notify_sound {
+    local sound_file="${1:-}"
+    local volume="${2:-}"
+
     # play the sound at the background
-    paplay $1 &
+    if [ -n "$volume" ]; then
+        paplay --volume="$volume" "$sound_file" &
+    else
+        paplay "$sound_file" &
+    fi
 }
 
 # Function to display notification
@@ -335,7 +347,7 @@ function run_focus {
     notify "normal" "Focus: $goal"
     countdown $(minutes_to_seconds $duration)
 
-    notify_sound $FOCUS_END_SOUND
+    notify_sound "$FOCUS_END_SOUND" "$FOCUS_END_VOLUME"
     notify "critical" "Focus complete! Time to take a break."
 
     # post-mortem logging

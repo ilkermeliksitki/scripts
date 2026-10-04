@@ -440,6 +440,49 @@ test_print_final_status() {
   fi
 }
 
+test_notify_sound() {
+  log_test_header "notify_sound"
+
+  local args_file="paplay_args_test.tmp"
+  rm -f "$args_file"
+
+  paplay() {
+    echo "$*" > "paplay_args_test.tmp"
+    return 0
+  }
+  # export function to make it available to subshells.
+  export -f paplay
+
+  # Test without volume parameter
+  notify_sound "test_sound.wav"
+
+  # wait for background process to complete
+  wait
+
+  local captured=""
+  [[ -f "$args_file" ]] && captured=$(cat "$args_file")
+  if [[ "$captured" == "test_sound.wav" ]]; then
+    log_pass "notify_sound plays sound without volume option when not specified."
+  else
+    log_fail "notify_sound failed without volume. Got: '$captured'"
+  fi
+
+  rm -f "$args_file"
+
+  # Test with volume parameter
+  notify_sound "test_sound.wav" 16384
+  wait
+  captured=""
+  [[ -f "$args_file" ]] && captured=$(cat "$args_file")
+  if [[ "$captured" == "--volume=16384 test_sound.wav" ]]; then
+    log_pass "notify_sound plays sound with --volume option when volume is specified."
+  else
+    log_fail "notify_sound failed with volume. Got: '$captured'"
+  fi
+
+  rm -f "$args_file"
+}
+
 test_run_focus() {
   log_test_header "run_focus"
   setup_mocks
@@ -447,7 +490,11 @@ test_run_focus() {
   # mock dependencies specific to run_focus
   countdown() { return 0; }
   export -f countdown
-  notify_sound() { return 0; }
+  local notify_sound_args=""
+  notify_sound() {
+    notify_sound_args="$*"
+    return 0
+  }
   export -f notify_sound
   notify() { return 0; }
   export -f notify
@@ -516,6 +563,13 @@ test_run_focus() {
     log_pass "Session logged."
   else
     log_fail "Session NOT logged."
+  fi
+
+  # verify notify_sound was called with FOCUS_END_SOUND and FOCUS_END_VOLUME
+  if [[ "$notify_sound_args" == "$FOCUS_END_SOUND $FOCUS_END_VOLUME" ]]; then
+    log_pass "Focus sound called with reduced volume ($FOCUS_END_VOLUME)."
+  else
+    log_fail "Focus sound not called with expected args. Expected '$FOCUS_END_SOUND $FOCUS_END_VOLUME', got '$notify_sound_args'"
   fi
 
   rm -f date_call_count
@@ -622,6 +676,7 @@ test_format_phase
 test_get_energy_level
 test_get_goal
 test_print_final_status
+test_notify_sound
 test_run_focus
 test_run_break
 teardown
