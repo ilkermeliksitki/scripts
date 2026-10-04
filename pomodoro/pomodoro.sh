@@ -445,21 +445,11 @@ function calculate_daily_total {
     fi
 
     if [ -f "$SESSION_LOG" ]; then
-        # grep for relevant dates and the specific Type
-        # then extract duration using awk
-        local sum=$(grep -E "$grep_pattern" "$SESSION_LOG" \
-            | grep "Type: $type" \
-            | awk '
-                match($0, /Duration: ([0-9]+)m/, duration) {
-                    sum += duration[1]
-                }
-                END { print sum }
-            '
-        )
-
-        if [ -n "$sum" ]; then
-            total_minutes=$sum
-        fi
+        while IFS= read -r line; do
+            if [[ "$line" =~ Type:[[:space:]]*$type ]] && [[ "$line" =~ Duration:[[:space:]]*([0-9]+)m ]]; then
+                ((total_minutes += BASH_REMATCH[1]))
+            fi
+        done < <(grep -E "$grep_pattern" "$SESSION_LOG")
     fi
 
     echo "$total_minutes"

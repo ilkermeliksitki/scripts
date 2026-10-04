@@ -317,6 +317,48 @@ test_log_session_break() {
   fi
 }
 
+test_calculate_daily_total() {
+  log_test_header "calculate_daily_total"
+
+  # Override SESSION_LOG for testing
+  SESSION_LOG="test_calc_session.log"
+  rm -f "$SESSION_LOG"
+
+  # Test with non-existent file
+  local result=$(calculate_daily_total "Focus")
+  if [[ "$result" -eq 0 ]]; then
+    log_pass "calculate_daily_total returns 0 when log file does not exist."
+  else
+    log_fail "calculate_daily_total failed on non-existent file. Got: $result"
+  fi
+
+  # Create mock log entries
+  local today=$(command date "+%Y-%m-%d")
+
+  echo "$today 10:00:00 | Type: Focus | Description: Task 1 | Duration: 25m" > "$SESSION_LOG"
+  echo "$today 11:00:00 | Type: Focus | Description: Task 2 | Duration: 50m" >> "$SESSION_LOG"
+  echo "$today 12:00:00 | Type: Break | Description: Lunch | Duration: 15m" >> "$SESSION_LOG"
+  echo "2020-01-01 10:00:00 | Type: Focus | Description: Old Task | Duration: 60m" >> "$SESSION_LOG"
+
+  # Test Focus calculation for today
+  result=$(calculate_daily_total "Focus")
+  if [[ "$result" -eq 75 ]]; then
+    log_pass "calculate_daily_total correctly sums focus duration (75m)."
+  else
+    log_fail "calculate_daily_total focus sum failed. Expected 75, got: $result"
+  fi
+
+  # Test Break calculation for today
+  result=$(calculate_daily_total "Break")
+  if [[ "$result" -eq 15 ]]; then
+    log_pass "calculate_daily_total correctly sums break duration (15m)."
+  else
+    log_fail "calculate_daily_total break sum failed. Expected 15, got: $result"
+  fi
+
+  rm -f "$SESSION_LOG"
+}
+
 test_get_valid_number() {
   log_test_header "get_valid_number"
 
@@ -736,6 +778,7 @@ test_seconds_to_minutes
 test_get_phase_suggestion
 test_log_session
 test_log_session_break
+test_calculate_daily_total
 test_get_valid_number
 test_countdown
 test_get_input
