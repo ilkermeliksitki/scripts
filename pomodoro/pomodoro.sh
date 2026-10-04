@@ -70,11 +70,18 @@ function notify_sound {
     fi
 }
 
-# Function to display notification
+# Function to display notification with title "Pomodoro"
+# default urgency is normal
 function notify {
-    local urgency=${1}
-    local message=${2}
-    notify-send -u $urgency "Pomodoro" "$message"
+    local urgency="${1:-normal}"
+    local message="${2:-}"
+
+    if [ -z "$message" ]; then
+        message="$urgency"
+        urgency="normal"
+    fi
+
+    notify-send -u "$urgency" "Pomodoro" "$message"
 }
 
 # Function to display countdown timer
@@ -139,7 +146,7 @@ function get_input {
         # timeout reached (exit code > 128 usually, but read -t returns failure)
         # nag the user
         notify_sound $NAG_SOUND # Use a short sound for nagging
-        notify "critical" "Waiting for your input..."
+        notify "normal" "Waiting for your input..."
     done
     
     # strip ansi color codes from input to ensure we get clean values
@@ -348,7 +355,7 @@ function run_focus {
     countdown $(minutes_to_seconds $duration)
 
     notify_sound "$FOCUS_END_SOUND" "$FOCUS_END_VOLUME"
-    notify "critical" "Focus complete! Time to take a break."
+    notify "normal" "Focus complete! Time to take a break."
 
     # post-mortem logging
     echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
@@ -400,7 +407,7 @@ function run_break {
     else
         notify_sound $SHORT_BREAK_END_SOUND
     fi
-    notify "critical" "Break over! Ready to focus?"
+    notify "normal" "Break over! Ready to focus?"
 
     # post-mortem logging for break
     echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"

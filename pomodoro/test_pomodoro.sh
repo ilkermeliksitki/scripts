@@ -440,6 +440,34 @@ test_print_final_status() {
   fi
 }
 
+test_notify() {
+  log_test_header "notify"
+
+  local notify_args=""
+  notify-send() {
+    notify_args="$*"
+    return 0
+  }
+  export -f notify-send
+
+  # test notify with urgency "normal" and a message
+  notify "normal" "Test message"
+
+  if [[ "$notify_args" == "-u normal Pomodoro Test message" ]]; then
+    log_pass "notify calls notify-send with specified urgency and message."
+  else
+    log_fail "notify failed with urgency and message. Got: '$notify_args'"
+  fi
+
+  # test notify with single argument defaulting to normal
+  notify "Default message"
+  if [[ "$notify_args" == "-u normal Pomodoro Default message" ]]; then
+    log_pass "notify defaults to normal urgency when only message is provided."
+  else
+    log_fail "notify default urgency failed. Got: '$notify_args'"
+  fi
+}
+
 test_notify_sound() {
   log_test_header "notify_sound"
 
@@ -496,7 +524,11 @@ test_run_focus() {
     return 0
   }
   export -f notify_sound
-  notify() { return 0; }
+  local notify_calls=()
+  notify() {
+    notify_calls+=("$*")
+    return 0
+  }
   export -f notify
 
   # mock used functions by overriding them
@@ -572,6 +604,19 @@ test_run_focus() {
     log_fail "Focus sound not called with expected args. Expected '$FOCUS_END_SOUND $FOCUS_END_VOLUME', got '$notify_sound_args'"
   fi
 
+  # verify all focus session notifications used normal urgency (preventing sticky alerts)
+  local all_notifications_normal=true
+  for call in "${notify_calls[@]}"; do
+    if [[ "$call" != *"normal"* ]]; then
+      all_notifications_normal=false
+    fi
+  done
+  if [[ "$all_notifications_normal" == "true" ]]; then
+    log_pass "All focus notifications used normal urgency."
+  else
+    log_fail "Non-normal notification sent during focus: ${notify_calls[*]}"
+  fi
+
   rm -f date_call_count
 }
 
@@ -582,6 +627,15 @@ test_run_break() {
   # mock dependencies
   countdown() { return 0; }
   export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+
+  local notify_break_calls=()
+  notify() {
+    notify_break_calls+=("$*")
+    return 0
+  }
+  export -f notify
 
   # mock inputs
   get_input() {
@@ -627,6 +681,19 @@ test_run_break() {
     log_pass "Break session logged."
   else
     log_fail "Break session NOT logged."
+  fi
+
+  # verify all break session notifications used normal urgency (preventing sticky alerts)
+  local all_notifications_normal=true
+  for call in "${notify_break_calls[@]}"; do
+    if [[ "$call" != *"normal"* ]]; then
+      all_notifications_normal=false
+    fi
+  done
+  if [[ "$all_notifications_normal" == "true" ]]; then
+    log_pass "All break notifications used normal urgency."
+  else
+    log_fail "Non-normal notification sent during break: ${notify_break_calls[*]}"
   fi
 
   rm -f date_call_count_break
@@ -676,6 +743,7 @@ test_format_phase
 test_get_energy_level
 test_get_goal
 test_print_final_status
+test_notify
 test_notify_sound
 test_run_focus
 test_run_break
