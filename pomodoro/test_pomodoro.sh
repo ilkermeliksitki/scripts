@@ -74,17 +74,6 @@ setup_mocks() {
   }
   export -f notify-send
 
-  # mock date
-  # we only care about date +%h for the script logic
-  date() {
-      if [[ "$1" == "+%H" ]]; then
-        echo "$MOCK_HOUR"
-      else
-        command date "$@"
-      fi
-  }
-  export -f date
-
   # mock sleep to speed up tests
   sleep() {
     return 0
@@ -148,6 +137,17 @@ test_seconds_to_minutes() {
 
 test_get_phase_suggestion() {
   log_test_header "get_phase_suggestion"
+
+  # mock date
+  # we only care about date +%h for the script logic
+  date() {
+      if [[ "$1" == "+%H" ]]; then
+        echo "$MOCK_HOUR"
+      else
+        command date "$@"
+      fi
+  }
+  export -f date
 
   # Test Case 1: High Urgency (Low elapsed, normal energy)
   # elapsed=0, energy=3
