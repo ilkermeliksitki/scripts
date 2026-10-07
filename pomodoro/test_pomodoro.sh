@@ -741,6 +741,315 @@ test_run_break() {
   rm -f date_call_count_break
 }
 
+test_countdown_interrupted() {
+  log_test_header "countdown_interrupted"
+  setup_mocks
+
+  local exit_code=0
+  (
+    # store the child pid
+    sub_pid=$BASHPID
+    (
+      # send SIGINT to the child after 0.2 seconds from grandchild process
+      sleep 0.2 && kill -INT "$sub_pid"
+    # should run in the background so that SIGINT should be caught by countdown.
+    ) &
+
+    countdown 10 > /dev/null
+  ) || exit_code=$?
+
+  if [[ "$exit_code" -eq 130 ]]; then
+    log_pass "Countdown returned 130 on SIGINT interrupt."
+  else
+    log_fail "Countdown did not return 130 on SIGINT. Got: $exit_code"
+  fi
+}
+
+test_handle_session_interruption() {
+  log_test_header "handle_session_interruption"
+  setup_mocks
+
+  local action=""
+
+  # Test default (empty input -> finish)
+  echo "" | (
+    handle_session_interruption "Focus" 14 25 action > /dev/null
+    if [[ "$action" == "finish" ]]; then exit 0; else exit 1; fi
+  )
+  if [[ $? -eq 0 ]]; then
+    log_pass "Default choice selects finish."
+  else
+    log_fail "Default choice failed to select finish."
+  fi
+
+  # Test choice 2 -> discard
+  echo "2" | (
+    handle_session_interruption "Focus" 14 25 action > /dev/null
+    if [[ "$action" == "discard" ]]; then exit 0; else exit 1; fi
+  )
+  if [[ $? -eq 0 ]]; then
+    log_pass "Choice 2 selects discard."
+  else
+    log_fail "Choice 2 failed to select discard."
+  fi
+
+  # Test choice 3 -> save_exit
+  echo "3" | (
+    handle_session_interruption "Focus" 14 25 action > /dev/null
+    if [[ "$action" == "save_exit" ]]; then exit 0; else exit 1; fi
+  )
+  if [[ $? -eq 0 ]]; then
+    log_pass "Choice 3 selects save_exit."
+  else
+    log_fail "Choice 3 failed to select save_exit."
+  fi
+
+  # Test choice 4 -> abort_exit
+  echo "4" | (
+    handle_session_interruption "Focus" 14 25 action > /dev/null
+    if [[ "$action" == "abort_exit" ]]; then exit 0; else exit 1; fi
+  )
+  if [[ $? -eq 0 ]]; then
+    log_pass "Choice 4 selects abort_exit."
+  else
+    log_fail "Choice 4 failed to select abort_exit."
+  fi
+
+  # Test break session options display
+  local break_output
+  break_output=$(echo "1" | handle_session_interruption "Break" 2 5 action)
+  if [[ "$break_output" == *"End break early"* ]] && [[ "$break_output" == *"Skip break"* ]]; then
+    log_pass "Break interruption menu displays break-specific options."
+  else
+    log_fail "Break interruption menu missing break-specific options."
+  fi
+}
+
+test_run_focus_interrupted_finish() {
+  log_test_header "run_focus_interrupted_finish"
+  setup_mocks
+
+  countdown() { return 130; }
+  export -f countdown
+  notify() { return 0; }
+  export -f notify
+  notify_sound() { return 0; }
+  export -f notify_sound
+
+  get_goal() {
+    local -n _g_ref="$3"
+    _g_ref="Interrupted Goal"
+  }
+  export -f get_goal
+
+  local logged=false
+  log_session() {
+    logged=true
+  }
+  export -f log_session
+
+  rm -f date_call_count_focus_int
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_focus_int" ]]; then
+         echo 10000 > date_call_count_focus_int
+         echo 10000
+       else
+         echo 10600
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  local elapsed=50
+  local current_goal="Test Goal"
+
+  # User chooses 1 (finish early)
+  run_focus "$current_goal" 25 3 "High_Urgency" 25 5 elapsed current_goal <<< "1" > /dev/null
+
+  rm -f date_call_count_focus_int
+
+  if [[ "$logged" == "true" ]]; then
+    log_pass "Interrupted focus was logged when choosing finish early."
+  else
+    log_fail "Interrupted focus was NOT logged."
+  fi
+
+  if [[ "$elapsed" -eq 60 ]]; then
+    log_pass "Elapsed focus time updated with actual 10m (50 -> 60)."
+  else
+    log_fail "Elapsed focus time incorrect. Expected 60, got: $elapsed"
+  fi
+}
+
+test_run_focus_interrupted_discard() {
+  log_test_header "run_focus_interrupted_discard"
+  setup_mocks
+
+  countdown() { return 130; }
+  export -f countdown
+  notify() { return 0; }
+  export -f notify
+  notify_sound() { return 0; }
+  export -f notify_sound
+
+  local logged=false
+  log_session() {
+    logged=true
+  }
+  export -f log_session
+
+  rm -f date_call_count_focus_disc
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_focus_disc" ]]; then
+         echo 10000 > date_call_count_focus_disc
+         echo 10000
+       else
+         echo 10600
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  local elapsed=50
+  local current_goal="Test Goal"
+
+  # User chooses 2 (discard session)
+  run_focus "$current_goal" 25 3 "High_Urgency" 25 5 elapsed current_goal <<< "2" > /dev/null
+
+  rm -f date_call_count_focus_disc
+
+  if [[ "$logged" == "false" ]]; then
+    log_pass "Discarded focus was NOT logged."
+  else
+    log_fail "Discarded focus was logged."
+  fi
+
+  if [[ "$elapsed" -eq 50 ]]; then
+    log_pass "Elapsed focus time remained unchanged (50)."
+  else
+    log_fail "Elapsed focus time changed unexpectedly. Expected 50, got: $elapsed"
+  fi
+}
+
+test_run_break_interrupted_finish() {
+  log_test_header "run_break_interrupted_finish"
+  setup_mocks
+
+  countdown() { return 130; }
+  export -f countdown
+  notify() { return 0; }
+  export -f notify
+  notify_sound() { return 0; }
+  export -f notify_sound
+
+  get_input() {
+    local -n _i_ref="$3"
+    _i_ref="Short Rest"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _n_ref="$3"
+    _n_ref="5"
+  }
+  export -f get_valid_number
+
+  local logged=false
+  local logged_type=""
+  log_session() {
+    logged=true
+    logged_type="$1"
+  }
+  export -f log_session
+
+  rm -f date_call_count_break_int
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break_int" ]]; then
+         echo 20000 > date_call_count_break_int
+         echo 20000
+       else
+         echo 20120  # 120s = 2m
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  # User chooses 1 (End break early)
+  run_break 5 3 "Phase" 25 <<< "1" > /dev/null
+
+  rm -f date_call_count_break_int
+
+  if [[ "$logged" == "true" ]] && [[ "$logged_type" == "Break" ]]; then
+    log_pass "Interrupted break was logged when choosing finish early."
+  else
+    log_fail "Interrupted break was NOT logged."
+  fi
+}
+
+test_run_break_interrupted_discard() {
+  log_test_header "run_break_interrupted_discard"
+  setup_mocks
+
+  countdown() { return 130; }
+  export -f countdown
+  notify() { return 0; }
+  export -f notify
+  notify_sound() { return 0; }
+  export -f notify_sound
+
+  get_input() {
+    local -n _i_ref="$3"
+    _i_ref="Short Rest"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _n_ref="$3"
+    _n_ref="5"
+  }
+  export -f get_valid_number
+
+  local logged=false
+  log_session() {
+    logged=true
+  }
+  export -f log_session
+
+  rm -f date_call_count_break_disc
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break_disc" ]]; then
+         echo 20000 > date_call_count_break_disc
+         echo 20000
+       else
+         echo 20120
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  # User chooses 2 (Skip break)
+  run_break 5 3 "Phase" 25 <<< "2" > /dev/null
+
+  rm -f date_call_count_break_disc
+
+  if [[ "$logged" == "false" ]]; then
+    log_pass "Discarded break was NOT logged."
+  else
+    log_fail "Discarded break was logged."
+  fi
+}
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -781,6 +1090,8 @@ test_log_session_break
 test_calculate_daily_total
 test_get_valid_number
 test_countdown
+test_countdown_interrupted
+test_handle_session_interruption
 test_get_input
 test_format_phase
 test_get_energy_level
@@ -789,7 +1100,11 @@ test_print_final_status
 test_notify
 test_notify_sound
 test_run_focus
+test_run_focus_interrupted_finish
+test_run_focus_interrupted_discard
 test_run_break
+test_run_break_interrupted_finish
+test_run_break_interrupted_discard
 teardown
 
 print_summary

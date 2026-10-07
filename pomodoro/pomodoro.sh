@@ -89,8 +89,16 @@ function countdown {
     local total_seconds=$1
     local seconds=$1
     local bar_length=30
+    local interrupted=0
+
+    local old_trap
+    old_trap=$(trap -p SIGINT || true)
+    trap 'interrupted=1' SIGINT
 
     while [ $seconds -gt 0 ]; do
+        if [ $interrupted -eq 1 ]; then
+            break
+        fi
         local elapsed=$(($total_seconds - $seconds))
         local percent=$(($elapsed * 100 / $total_seconds))
         local filled=$(($percent * $bar_length / 100))
@@ -107,6 +115,16 @@ function countdown {
         : $((seconds--))
     done
     echo -ne "\033[2K\n\033[2K\033[1A\r"
+
+    trap - SIGINT
+    if [ -n "$old_trap" ]; then
+        eval "$old_trap"
+    fi
+
+    if [ $interrupted -eq 1 ]; then
+        return 130
+    fi
+    return 0
 }
 
 # Function to handle SIGINT (Ctrl+C)
@@ -335,6 +353,59 @@ function get_goal {
     __goal_ref="$input_val"
 }
 
+# helper to handle early interruption menu during focus or break
+function handle_session_interruption {
+    local session_type="$1"
+    local elapsed_min="$2"
+    local planned_min="$3"
+    local -n __action_ref="$4"
+
+    echo -e "\n$(color_yellow "$session_type interrupted at ${elapsed_min}m / ${planned_min}m:")"
+    if [ "$session_type" == "Focus" ]; then
+        echo "  [1] Finish early     - Log ${elapsed_min}m and proceed to break [default]"
+        echo "  [2] Discard session  - Don't log and proceed to break"
+        echo "  [3] Save & Exit      - Log ${elapsed_min}m and quit Pomodoro"
+        echo "  [4] Abort & Quit     - Don't log and quit Pomodoro"
+    else
+        echo "  [1] End break early  - Log ${elapsed_min}m and start next focus [default]"
+        echo "  [2] Skip break       - Don't log and start next focus"
+        echo "  [3] Save & Exit      - Log ${elapsed_min}m and quit Pomodoro"
+        echo "  [4] Abort & Quit     - Don't log and quit Pomodoro"
+    fi
+
+    local choice=""
+    local menu_int=0
+    local old_trap
+    old_trap=$(trap -p SIGINT || true)
+    trap 'menu_int=1' SIGINT
+
+    while true; do
+        read -r -p "Choose [1]: " choice || { menu_int=1; }
+        local read_status=$?
+
+        # If interrupted again via Ctrl+C or EOF, treat as Save & Exit
+        if [ $menu_int -eq 1 ] || [ $read_status -gt 128 ]; then
+            echo -e "\n$(color_yellow "Interrupted again. Saving and exiting.")"
+            __action_ref="save_exit"
+            break
+        fi
+
+        choice="${choice:-1}"
+        case "$choice" in
+            1) __action_ref="finish"; break ;;
+            2) __action_ref="discard"; break ;;
+            3) __action_ref="save_exit"; break ;;
+            4) __action_ref="abort_exit"; break ;;
+            *) echo "$(color_red "Invalid option. Please choose 1, 2, 3, or 4.")" ;;
+        esac
+    done
+
+    trap - SIGINT
+    if [ -n "$old_trap" ]; then
+        eval "$old_trap"
+    fi
+}
+
 # helper to run focus session
 function run_focus {
     local goal="$1"
@@ -352,22 +423,34 @@ function run_focus {
     # focus timer
     echo -e "\n>>> $(color_blue "Focus"): $(color_green "$goal") ($duration min)"
     notify "normal" "Focus: $goal"
-    countdown $(minutes_to_seconds $duration)
 
-    notify_sound "$FOCUS_END_SOUND" "$FOCUS_END_VOLUME"
-    notify "normal" "Focus complete! Time to take a break."
+    local countdown_interrupted=0
+    countdown $(minutes_to_seconds $duration) || countdown_interrupted=1
+
+    local action="finish"
+    local end_time=$(date +%s)
+    local duration_seconds=$((end_time - start_time))
+    local actual_duration=$(seconds_to_minutes $duration_seconds)
+
+    if [ $countdown_interrupted -eq 1 ]; then
+        handle_session_interruption "Focus" "$actual_duration" "$duration" action
+        if [ "$action" == "discard" ]; then
+            echo -e "$(color_red "Focus session discarded.")"
+            return 0
+        elif [ "$action" == "abort_exit" ]; then
+            echo -e "$(color_red "Session aborted. Exiting Pomodoro.")"
+            exit 0
+        fi
+        notify "normal" "Focus ended early (${actual_duration}m)."
+    else
+        notify_sound "$FOCUS_END_SOUND" "$FOCUS_END_VOLUME"
+        notify "normal" "Focus complete! Time to take a break."
+    fi
 
     # post-mortem logging
     echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
     get_goal "Actual Goal" "$goal" final_goal "false"
     clear_lines 5
-
-    # capture end time
-    local end_time=$(date +%s)
-
-    # calculate actual duration in minutes
-    local duration_seconds=$((end_time - start_time))
-    local actual_duration=$(seconds_to_minutes $duration_seconds)
 
     # print final status
     print_final_status "Focus" "$final_goal" "$actual_duration"
@@ -382,6 +465,11 @@ function run_focus {
 
     # return the final goal
     __goal_ref="$final_goal"
+
+    if [ "$action" == "save_exit" ]; then
+        echo -e "$(color_green "Focus saved (${actual_duration}m). Exiting Pomodoro.")"
+        exit 0
+    fi
 }
 
 # helper to run break session
@@ -400,32 +488,47 @@ function run_break {
     # capture start time
     local break_start_time=$(date +%s)
 
-    countdown $(minutes_to_seconds $current_break_time)
+    local countdown_interrupted=0
+    countdown $(minutes_to_seconds $current_break_time) || countdown_interrupted=1
 
-    if [ "$current_break_time" -ge 20 ]; then
-        notify_sound $LONG_BREAK_END_SOUND
+    local action="finish"
+    local break_end_time=$(date +%s)
+    local break_duration_seconds=$((break_end_time - break_start_time))
+    local actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
+
+    if [ $countdown_interrupted -eq 1 ]; then
+        handle_session_interruption "Break" "$actual_break_duration" "$current_break_time" action
+        if [ "$action" == "discard" ]; then
+            echo -e "$(color_yellow "Break skipped.")"
+            return 0
+        elif [ "$action" == "abort_exit" ]; then
+            echo -e "$(color_red "Break aborted. Exiting Pomodoro.")"
+            exit 0
+        fi
     else
-        notify_sound $SHORT_BREAK_END_SOUND
+        if [ "$current_break_time" -ge 20 ]; then
+            notify_sound $LONG_BREAK_END_SOUND
+        else
+            notify_sound $SHORT_BREAK_END_SOUND
+        fi
+        notify "normal" "Break over! Ready to focus?"
     fi
-    notify "normal" "Break over! Ready to focus?"
 
     # post-mortem logging for break
     echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
     get_input "Actual Break Activity" "$break_activity" final_break_activity
     clear_lines 5
 
-    # capture end time
-    local break_end_time=$(date +%s)
-
-    # calculate actual duration
-    local break_duration_seconds=$((break_end_time - break_start_time))
-    local actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
-
     # print final status
     print_final_status "Break" "$final_break_activity" "$actual_break_duration"
 
     # log the break
     log_session "Break" "$final_break_activity" "$actual_break_duration" "$energy" "$phase" "$suggest_focus" "$suggest_break"
+
+    if [ "$action" == "save_exit" ]; then
+        echo -e "$(color_green "Break saved (${actual_break_duration}m). Exiting Pomodoro.")"
+        exit 0
+    fi
 }
 
 # helper to calculate total elapsed focus time for today from log
