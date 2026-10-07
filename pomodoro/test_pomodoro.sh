@@ -1114,6 +1114,120 @@ test_run_break_activity_preservation() {
   fi
 }
 
+test_run_break_surpassed_duration() {
+  log_test_header "run_break_surpassed_duration"
+  setup_mocks
+
+  countdown() { return 0; }
+  export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+  notify() { return 0; }
+  export -f notify
+
+  get_input() {
+    local -n _input_ref="$3"
+    _input_ref="preparing coffee"
+  }
+  export -f get_input
+
+  get_valid_number() {
+    local -n _num_ref="$3"
+    _num_ref="10"
+  }
+  export -f get_valid_number
+
+  local logged_duration=""
+  log_session() {
+    logged_duration="$3"
+  }
+  export -f log_session
+
+  rm -f date_call_count_break_surpassed
+  # Start time: 20000, End time: 20900 (15 min elapsed for 10 min suggested break)
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_break_surpassed" ]]; then
+         echo 20000 > date_call_count_break_surpassed
+         echo 20000
+       else
+         echo 20900
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  run_break "10" "3" "Phase" "25" > /dev/null
+
+  rm -f date_call_count_break_surpassed
+
+  if [[ "$logged_duration" == "15" ]]; then
+    log_pass "Break session logged actual elapsed duration (15m) when surpassing suggested 10m."
+  else
+    log_fail "Break session failed to log actual elapsed duration. Expected 15, got: $logged_duration"
+  fi
+}
+
+test_run_focus_surpassed_duration() {
+  log_test_header "run_focus_surpassed_duration"
+  setup_mocks
+
+  countdown() { return 0; }
+  export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+  notify() { return 0; }
+  export -f notify
+
+  get_goal() {
+    local -n _goal_ref="$3"
+    _goal_ref="Extended Focus Goal"
+  }
+  export -f get_goal
+
+  local logged_duration=""
+  log_session() {
+    logged_duration="$3"
+  }
+  export -f log_session
+
+  rm -f date_call_count_focus_surpassed
+  # Start time: 10000, End time: 12100 (35 min elapsed for 25 min planned focus)
+  date() {
+    if [[ "$1" == "+%s" ]]; then
+       if [[ ! -f "date_call_count_focus_surpassed" ]]; then
+         echo 10000 > date_call_count_focus_surpassed
+         echo 10000
+       else
+         echo 12100
+       fi
+    else
+       command date "$@"
+    fi
+  }
+  export -f date
+
+  local elapsed=50
+  local current_goal="Test Goal"
+  run_focus "$current_goal" "25" "3" "Phase" "25" "5" elapsed current_goal > /dev/null
+
+  rm -f date_call_count_focus_surpassed
+
+  if [[ "$logged_duration" == "35" ]]; then
+    log_pass "Focus session logged actual elapsed duration (35m) when surpassing planned 25m."
+  else
+    log_fail "Focus session failed to log actual elapsed duration. Expected 35, got: $logged_duration"
+  fi
+
+  if [[ "$elapsed" -eq 85 ]]; then
+    log_pass "Elapsed focus time updated with actual 35m (50 -> 85)."
+  else
+    log_fail "Elapsed focus time incorrect. Expected 85, got: $elapsed"
+  fi
+}
+
 print_summary() {
   echo "---------------------------------------------------"
   echo "Test Summary"
@@ -1165,10 +1279,12 @@ test_notify_sound
 test_run_focus
 test_run_focus_interrupted_finish
 test_run_focus_interrupted_discard
+test_run_focus_surpassed_duration
 test_run_break
 test_run_break_interrupted_finish
 test_run_break_interrupted_discard
 test_run_break_activity_preservation
+test_run_break_surpassed_duration
 teardown
 
 print_summary

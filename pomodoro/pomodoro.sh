@@ -427,11 +427,14 @@ function run_focus {
     countdown $(minutes_to_seconds $duration) || countdown_interrupted=1
 
     local action="finish"
-    local end_time=$(date +%s)
-    local duration_seconds=$((end_time - start_time))
-    local actual_duration=$(seconds_to_minutes $duration_seconds)
+    local end_time
+    local duration_seconds
+    local actual_duration
 
     if [ $countdown_interrupted -eq 1 ]; then
+        end_time=$(date +%s)
+        duration_seconds=$((end_time - start_time))
+        actual_duration=$(seconds_to_minutes $duration_seconds)
         handle_session_interruption "Focus" "$actual_duration" "$duration" action
         if [ "$action" == "discard" ]; then
             echo -e "$(color_red "Focus session discarded.")"
@@ -450,6 +453,12 @@ function run_focus {
     echo -e "\n$(color_purple ">>> Session Complete. Confirm details:")"
     get_goal "Actual Goal" "$goal" final_goal "false"
     clear_lines 5
+
+    if [ $countdown_interrupted -eq 0 ]; then
+        end_time=$(date +%s)
+        duration_seconds=$((end_time - start_time))
+        actual_duration=$(seconds_to_minutes $duration_seconds)
+    fi
 
     # print final status
     print_final_status "Focus" "$final_goal" "$actual_duration"
@@ -491,6 +500,9 @@ function run_break {
             break
         fi
         echo "$(color_red "Break activity cannot be empty.")"
+        notify_sound $NAG_SOUND
+        sleep 1 # so that the user sees the message.
+        clear_lines 2
     done
     get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
     clear_lines 2
@@ -507,11 +519,14 @@ function run_break {
     countdown $(minutes_to_seconds $current_break_time) || countdown_interrupted=1
 
     local action="finish"
-    local break_end_time=$(date +%s)
-    local break_duration_seconds=$((break_end_time - break_start_time))
-    local actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
+    local break_end_time
+    local break_duration_seconds
+    local actual_break_duration
 
     if [ $countdown_interrupted -eq 1 ]; then
+        break_end_time=$(date +%s)
+        break_duration_seconds=$((break_end_time - break_start_time))
+        actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
         handle_session_interruption "Break" "$actual_break_duration" "$current_break_time" action
         if [ "$action" == "discard" ]; then
             echo -e "$(color_yellow "Break skipped.")"
@@ -536,6 +551,12 @@ function run_break {
 
     # update break activity reference with confirmed activity
     __break_activity_ref="$final_break_activity"
+
+    if [ $countdown_interrupted -eq 0 ]; then
+        break_end_time=$(date +%s)
+        break_duration_seconds=$((break_end_time - break_start_time))
+        actual_break_duration=$(seconds_to_minutes $break_duration_seconds)
+    fi
 
     # print final status
     print_final_status "Break" "$final_break_activity" "$actual_break_duration"
@@ -605,8 +626,6 @@ function pomodoro {
         
         # phase specific action
         phase_specific_action "$phase_name" "$display_phase" "$total_elapsed" "$suggest_focus" "$suggest_break"
-        
-
         
         if [ "$suggest_focus" -gt 0 ]; then
             # goal setting
