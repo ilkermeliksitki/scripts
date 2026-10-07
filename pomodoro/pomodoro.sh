@@ -30,7 +30,6 @@ NAG_SOUND="$SCRIPT_DIR/sounds/nagging.wav"
 # 75% reduced noise level (25% volume) for focus end sound so it is gentle and not distracting
 FOCUS_END_VOLUME=$((65536 * 25 / 100))
 
-
 # add dependency check for paplay and notify-send
 function check_dependencies {
     if ! command -v paplay &> /dev/null
@@ -478,10 +477,26 @@ function run_break {
     local energy="$2"
     local phase="$3"
     local suggest_focus="$4"
+    local _dummy_break=""
+    local -n __break_activity_ref
+    if [ -n "${5:-}" ]; then
+        __break_activity_ref="$5"
+    else
+        __break_activity_ref="_dummy_break"
+    fi
 
-    get_input "Break Activity" "rest" break_activity
+    while true; do
+        get_input "Break Activity" "$__break_activity_ref" break_activity
+        if [ -n "$break_activity" ]; then
+            break
+        fi
+        echo "$(color_red "Break activity cannot be empty.")"
+    done
     get_valid_number "Break Duration (min)" "$suggest_break" current_break_time 1
     clear_lines 2
+
+    # preserve break activity
+    __break_activity_ref="$break_activity"
 
     echo -e "\n>>> $(color_brown "Break:") $(color_green "$break_activity") ($current_break_time min)"
 
@@ -518,6 +533,9 @@ function run_break {
     echo -e "\n$(color_purple ">>> Break Complete. Confirm details:")"
     get_input "Actual Break Activity" "$break_activity" final_break_activity
     clear_lines 5
+
+    # update break activity reference with confirmed activity
+    __break_activity_ref="$final_break_activity"
 
     # print final status
     print_final_status "Break" "$final_break_activity" "$actual_break_duration"
@@ -563,6 +581,7 @@ function pomodoro {
     local total_elapsed=$(calculate_daily_total "Focus")
     local total_break=$(calculate_daily_total "Break")
     local previous_goal=""
+    local previous_break=""
     local current_energy=""
 
     check_dependencies
@@ -607,7 +626,7 @@ function pomodoro {
             previous_goal="$current_goal"
         fi
 
-        run_break "$suggest_break" "$current_energy" "$display_phase" "$suggest_focus"
+        run_break "$suggest_break" "$current_energy" "$display_phase" "$suggest_focus" previous_break
 
         # wait for next loop
         get_input "Next session?" "y" next_session
