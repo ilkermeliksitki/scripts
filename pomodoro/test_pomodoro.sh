@@ -1051,6 +1051,69 @@ test_run_break_interrupted_discard() {
   fi
 }
 
+test_run_break_activity_preservation() {
+  log_test_header "run_break_activity_preservation"
+  setup_mocks
+
+  countdown() { return 0; }
+  export -f countdown
+  notify_sound() { return 0; }
+  export -f notify_sound
+  notify() { return 0; }
+  export -f notify
+  get_valid_number() {
+    local -n _num_ref="$3"
+    _num_ref="5"
+  }
+  export -f get_valid_number
+
+  local captured_defaults=()
+  get_input() {
+    local prompt="$1"
+    local default="$2"
+    local -n _input_ref="$3"
+    captured_defaults+=("$default")
+    if [[ "$prompt" == "Break Activity" ]]; then
+      if [[ -n "$default" ]]; then
+        _input_ref="$default"
+      else
+        _input_ref="reading: emile by jean-jacques rousseau"
+      fi
+    else
+      _input_ref="$default"
+    fi
+  }
+  export -f get_input
+
+  log_session() { return 0; }
+  export -f log_session
+
+  # Session 1: initial empty previous_break
+  local previous_break=""
+  run_break 5 3 "Phase" 25 previous_break > /dev/null
+
+  if [[ "$previous_break" == "reading: emile by jean-jacques rousseau" ]]; then
+    log_pass "First break sets previous_break activity."
+  else
+    log_fail "First break failed to set previous_break. Got: '$previous_break'"
+  fi
+
+  if [[ "${captured_defaults[0]}" == "" ]]; then
+    log_pass "First break had no default value initially."
+  else
+    log_fail "First break default was not empty. Got: '${captured_defaults[0]}'"
+  fi
+
+  # Session 2: uses preserved previous_break as default
+  run_break 5 3 "Phase" 25 previous_break > /dev/null
+
+  if [[ "${captured_defaults[2]}" == "reading: emile by jean-jacques rousseau" ]]; then
+    log_pass "Second break used preserved activity as default value."
+  else
+    log_fail "Second break did not use preserved activity. Got: '${captured_defaults[2]}'"
+  fi
+}
+
 print_summary() {
   echo "---------------------------------------------------"
   echo "Test Summary"
@@ -1105,6 +1168,7 @@ test_run_focus_interrupted_discard
 test_run_break
 test_run_break_interrupted_finish
 test_run_break_interrupted_discard
+test_run_break_activity_preservation
 teardown
 
 print_summary
