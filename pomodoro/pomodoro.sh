@@ -646,10 +646,6 @@ function pomodoro {
         fi
 
         run_break "$suggest_break" "$current_energy" "$display_phase" "$suggest_focus" previous_break
-
-        # wait for next loop
-        get_input "Next session?" "y" next_session
-        clear_lines 1
     done
 }
 
