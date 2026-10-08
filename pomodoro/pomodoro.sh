@@ -570,28 +570,32 @@ function run_break {
     fi
 }
 
-# helper to calculate total elapsed focus time for today from log
 # helper to calculate total elapsed time for today from log for a specific type
+# a day starts at 4 AM (04:00:00)
 function calculate_daily_total {
     local type="$1"
-    local today=$(date "+%Y-%m-%d")
-    local current_hour=$(date +%H)
-    local grep_pattern="^$today"
+    local cutoff=$(date -d "${2:-now} 4 hours ago" "+%Y-%m-%d 04:00:00")
     local total_minutes=0
-
-    # if it's late night (before 4 AM), count it as part of yesterday
-    # so we include sessions from yesterday as well
-    if [ "$current_hour" -lt 4 ]; then
-        local yesterday=$(date -d "yesterday" "+%Y-%m-%d")
-        grep_pattern="^$today|^$yesterday"
-    fi
 
     if [ -f "$SESSION_LOG" ]; then
         while IFS= read -r line; do
-            if [[ "$line" =~ Type:[[:space:]]*$type ]] && [[ "$line" =~ Duration:[[:space:]]*([0-9]+)m ]]; then
-                ((total_minutes += BASH_REMATCH[1]))
+            local timestamp="${line:0:19}"
+            local duration_minutes=0
+
+            # if type doesn't match, skip
+            if [[ ! "$line" =~ Type:[[:space:]]*$type ]]; then
+               continue
             fi
-        done < <(grep -E "$grep_pattern" "$SESSION_LOG")
+
+            # extract duration in minutes
+            if [[ "$line" =~ Duration:[[:space:]]*([0-9]+)m ]]; then
+                duration_minutes="${BASH_REMATCH[1]}"
+            fi
+
+            if [[ "$timestamp" > "$cutoff" || "$timestamp" == "$cutoff" ]] && (( duration_minutes > 0 )); then
+                ((total_minutes += duration_minutes))
+            fi
+        done < "$SESSION_LOG"
     fi
 
     echo "$total_minutes"

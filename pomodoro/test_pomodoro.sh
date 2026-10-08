@@ -357,6 +357,55 @@ test_calculate_daily_total() {
   fi
 
   rm -f "$SESSION_LOG"
+
+  # Test 4 AM cutoff (sessions before 4 AM on the same day are excluded when checking after 4 AM)
+  echo "$today 01:00:00 | Type: Focus | Description: Early Chores | Duration: 71m" > "$SESSION_LOG"
+  echo "$today 03:59:59 | Type: Focus | Description: Just Before Cutoff | Duration: 20m" >> "$SESSION_LOG"
+  echo "$today 04:00:00 | Type: Focus | Description: Morning Task 1 | Duration: 25m" >> "$SESSION_LOG"
+  echo "$today 07:30:00 | Type: Focus | Description: Morning Task 2 | Duration: 50m" >> "$SESSION_LOG"
+  echo "$today 02:00:00 | Type: Break | Description: Early Break | Duration: 15m" >> "$SESSION_LOG"
+  echo "$today 07:45:00 | Type: Break | Description: Morning Break | Duration: 10m" >> "$SESSION_LOG"
+
+  result=$(calculate_daily_total "Focus" "$today 08:00:00")
+  if [[ "$result" -eq 75 ]]; then
+    log_pass "calculate_daily_total excludes sessions before 4 AM today when checking at 8 AM (75m)."
+  else
+    log_fail "calculate_daily_total 4 AM cutoff failed. Expected 75, got: $result"
+  fi
+
+  result=$(calculate_daily_total "Break" "$today 08:00:00")
+  if [[ "$result" -eq 10 ]]; then
+    log_pass "calculate_daily_total excludes break before 4 AM today when checking at 8 AM (10m)."
+  else
+    log_fail "calculate_daily_total 4 AM cutoff for break failed. Expected 10, got: $result"
+  fi
+
+  rm -f "$SESSION_LOG"
+
+  # Test late-night before 4 AM (counts sessions from yesterday after 4 AM and today before 4 AM)
+  local yesterday=$(command date -d "$today - 1 day" "+%Y-%m-%d")
+  echo "$yesterday 02:00:00 | Type: Focus | Description: Yesterday Too Early | Duration: 40m" > "$SESSION_LOG"
+  echo "$yesterday 10:00:00 | Type: Focus | Description: Yesterday Day Task | Duration: 25m" >> "$SESSION_LOG"
+  echo "$yesterday 21:00:00 | Type: Focus | Description: Yesterday Eve Task | Duration: 50m" >> "$SESSION_LOG"
+  echo "$today 01:20:00 | Type: Focus | Description: Late Night Task | Duration: 30m" >> "$SESSION_LOG"
+  echo "$yesterday 02:30:00 | Type: Break | Description: Old Break | Duration: 10m" >> "$SESSION_LOG"
+  echo "$today 01:50:00 | Type: Break | Description: Late Break | Duration: 15m" >> "$SESSION_LOG"
+
+  result=$(calculate_daily_total "Focus" "$today 02:00:00")
+  if [[ "$result" -eq 105 ]]; then
+    log_pass "calculate_daily_total correctly sums late night focus duration before 4 AM (105m)."
+  else
+    log_fail "calculate_daily_total late night focus sum failed. Expected 105, got: $result"
+  fi
+
+  result=$(calculate_daily_total "Break" "$today 02:00:00")
+  if [[ "$result" -eq 15 ]]; then
+    log_pass "calculate_daily_total correctly sums late night break duration before 4 AM (15m)."
+  else
+    log_fail "calculate_daily_total late night break sum failed. Expected 15, got: $result"
+  fi
+
+  rm -f "$SESSION_LOG"
 }
 
 test_get_valid_number() {
