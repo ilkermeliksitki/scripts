@@ -2,7 +2,7 @@
 id: german sentence
 title: [Prompt] Produce German Sentence
 description: German Sentences for vocabulary improvement
-tags: teach, quiz, test, exam, socratic, mastery, questions, tutor, learn
+tags: language, words, vocabulary
 ---
 Produce 5 German sentences along with its English translations by using
 {{input:Which word?}}.
