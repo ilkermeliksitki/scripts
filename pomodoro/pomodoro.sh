@@ -144,7 +144,7 @@ function get_input {
     local default="$2"
     local -n __input_ref="$3"
     local input=""
-    local timeout=${4:-60}
+    local timeout=${4:-240}
 
     while true; do
         if [ -n "$default" ]; then
