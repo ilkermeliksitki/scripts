@@ -8,6 +8,7 @@ __pycache__
 *.csv
 *.db
 *.class
+.agents/
 
 ## focus prompt
 # maven
