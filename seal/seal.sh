@@ -116,10 +116,10 @@ util_copy_files() {
   local excludes_array=("$@")
 
   # construct find command arguments for exclusion
-  local find_args=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$dest_dir")
+  local find_args=(! -wholename "./$SCRIPT_NAME" ! -wholename "./$encrypted_archive_name" ! -wholename "./$dest_dir")
 
   for pattern in "${excludes_array[@]}"; do
-    find_args+=(! -name "$pattern")
+    find_args+=(! -wholename "./$pattern")
   done
 
   if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec cp -rP {} "$dest_dir" \; ; then
@@ -137,10 +137,10 @@ util_remove_files() {
   shift 2
   local excludes_array=("$@")
 
-  local find_args=(! -name "$SCRIPT_NAME" ! -name "$encrypted_archive_name" ! -name "$temp_dir_name")
+  local find_args=(! -wholename "./$SCRIPT_NAME" ! -wholename "./$encrypted_archive_name" ! -wholename "./$temp_dir_name")
 
   for pattern in "${excludes_array[@]}"; do
-    find_args+=(! -name "$pattern")
+    find_args+=(! -wholename "./$pattern")
   done
 
   if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec rm -rf {} \; ; then
