@@ -18,9 +18,9 @@
 # Constants & Configuration
 # ==============================================================================
 SCRIPT_NAME=$(basename "$0")
-HOME_DIR="${HOME_DIR:-$HOME}"
-HOME_DIR="${HOME_DIR%/}" # remove trailing slash if exists
-CURRENT_DIR="${CURRENT_DIR:-$PWD}"
+umask 077
+HOME_DIR="${HOME%/}"
+CURRENT_DIR="$PWD"
 DEFAULT_NAME=$(basename "$PWD")
 
 # global variables for cleanup
@@ -122,7 +122,7 @@ util_copy_files() {
     find_args+=(! -name "$pattern")
   done
 
-  if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec cp -r {} "$dest_dir" \; ; then
+  if ! find . -mindepth 1 -maxdepth 1 "${find_args[@]}" -exec cp -rP {} "$dest_dir" \; ; then
     log_error "Failed to copy files."
     return 1
   fi
@@ -232,7 +232,12 @@ parse_lock_args() {
         fi
         ;;
       i )
-        excludes+=("${OPTARG%/}")
+        local _pattern="${OPTARG%/}"
+        if [[ "$_pattern" == */* ]]; then
+          log_error "Exclude pattern must be a top-level name, not a path: $OPTARG"
+          exit 1
+        fi
+        excludes+=("$_pattern")
         ;;
       h )
         show_usage
@@ -272,6 +277,14 @@ validate_lock_preconditions() {
     log_error "Please specify encryption method (-r recipient or -s for symmetric)."
     show_usage
     exit 1
+  fi
+
+  # Validate recipient key exists
+  if [ -n "$recipient" ]; then
+    if ! gpg --list-keys "$recipient" &>/dev/null; then
+      log_error "No GPG key found for recipient '$recipient'. Import the key first."
+      exit 1
+    fi
   fi
 
   if [ -f "$encrypted_archive" ]; then
@@ -332,23 +345,25 @@ cmd_lock() {
   shift "$args_processed"
 
   local archive_name="${1:-$DEFAULT_NAME}"
-  ARCHIVE="${archive_name}.tar.gz"
   local encrypted_archive="${archive_name}.tar.gz.gpg"
 
   validate_lock_preconditions
   confirm_lock_action
   check_git_inclusion
 
-  # create temp directory
-  TEMP_DIR=$(mktemp -d temp_seal_XXXXXXX)
+  # create temp directory in system tmpdir
+  TEMP_DIR=$(mktemp -d)
+  local staging_dir="$TEMP_DIR/staging"
+  mkdir "$staging_dir"
+  ARCHIVE="$TEMP_DIR/${archive_name}.tar.gz"
 
   # 1. copy files
-  if ! util_copy_files "$TEMP_DIR" "$encrypted_archive" "${excludes[@]}"; then
+  if ! util_copy_files "$staging_dir" "$encrypted_archive" "${excludes[@]}"; then
     exit 1
   fi
 
   # 2. archive
-  if ! core_archive "$ARCHIVE" "$TEMP_DIR"; then
+  if ! core_archive "$ARCHIVE" "$staging_dir"; then
     exit 1
   fi
 

@@ -330,6 +330,101 @@ test_show_usage() {
   fi
 }
 
+# ==============================================================================
+# security tests
+# ==============================================================================
+
+test_reject_path_in_exclude() {
+  log_test_header "security: reject path separator in -i pattern"
+
+  setup_gpg_mock
+
+  mkdir -p nested/dir
+  echo "secret" > nested/dir/file.txt
+
+  # -i "nested/dir" should be rejected (interior slash)
+  local output
+  output=$(echo -e "y\nn" | $SEAL_SCRIPT lock -s -i "nested/dir" test_path_reject 2>&1)
+  local exit_code=$?
+
+  if [[ $exit_code -ne 0 ]] && echo "$output" | grep -q "top-level name"; then
+    log_pass "Path pattern 'nested/dir' was rejected."
+  else
+    log_fail "Path pattern 'nested/dir' was NOT rejected (exit=$exit_code)."
+  fi
+
+  # cleanup
+  rm -rf nested test_path_reject.tar.gz.gpg
+}
+
+test_env_override_blocked() {
+  log_test_header "security: HOME_DIR env override does not bypass location check"
+
+  setup_gpg_mock
+
+  # Need absolute path since we cd to /tmp
+  local abs_seal
+  abs_seal=$(realpath "$SEAL_SCRIPT")
+
+  # Run from /tmp (outside HOME) with HOME_DIR overridden to /tmp.
+  # If the env override is blocked, check_location should reject it.
+  local output
+  output=$(cd /tmp && HOME_DIR=/tmp bash "$abs_seal" lock -s test_env 2>&1)
+  local exit_code=$?
+
+  if [[ $exit_code -ne 0 ]] && echo "$output" | grep -qi "home directory"; then
+    log_pass "HOME_DIR env override was ignored."
+  else
+    log_fail "HOME_DIR env override bypassed location check (exit=$exit_code)."
+  fi
+}
+
+test_no_plaintext_archive_in_cwd() {
+  log_test_header "security: no plaintext .tar.gz left in working directory"
+
+  setup_gpg_mock
+
+  echo -e "y\nn" | $SEAL_SCRIPT lock -s test_plaintext > /dev/null 2>&1
+
+  if [[ -f "test_plaintext.tar.gz" ]]; then
+    log_fail "Plaintext archive 'test_plaintext.tar.gz' found in working directory!"
+    rm -f test_plaintext.tar.gz
+  else
+    log_pass "No plaintext archive in working directory."
+  fi
+
+  # cleanup
+  rm -f test_plaintext.tar.gz.gpg
+}
+
+test_symlink_not_followed() {
+  log_test_header "security: symlinks are copied as symlinks, not dereferenced"
+
+  setup_gpg_mock
+
+  # create a file outside the project dir and a symlink pointing to it
+  local outside_file
+  outside_file=$(mktemp)
+  echo "OUTSIDE_SECRET" > "$outside_file"
+  ln -s "$outside_file" link_to_outside
+
+  echo -e "y\nn" | $SEAL_SCRIPT lock -s test_symlink > /dev/null 2>&1
+
+  # unlock and check if the symlink content leaked
+  $SEAL_SCRIPT unlock test_symlink > /dev/null 2>&1
+
+  if [[ -L "link_to_outside" ]]; then
+    log_pass "Symlink preserved as symlink (not dereferenced)."
+  elif [[ -f "link_to_outside" ]] && grep -q "OUTSIDE_SECRET" link_to_outside 2>/dev/null; then
+    log_fail "Symlink was dereferenced — outside file content leaked into archive!"
+  else
+    log_pass "Symlink handled safely."
+  fi
+
+  # cleanup
+  rm -f "$outside_file" link_to_outside test_symlink.tar.gz.gpg
+}
+
 
 print_summary() {
   echo "---------------------------------------------------"
@@ -367,6 +462,10 @@ test_ignore_folder_with_trailing_slash
 test_ignore_folder_without_trailing_slash
 test_ignore_file_and_folder_together
 test_show_usage
+test_reject_path_in_exclude
+test_env_override_blocked
+test_no_plaintext_archive_in_cwd
+test_symlink_not_followed
 teardown
 
 print_summary
